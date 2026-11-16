@@ -8,7 +8,7 @@
 #>
 param([int]$Port = 8080)
 
-. "$PSScriptRoot\plankopf-pruefung.ps1"
+. "$PSScriptRoot\pruefungen.ps1"
 
 $webOrdner = Join-Path $PSScriptRoot 'web'
 $tempOrdner = Join-Path ([System.IO.Path]::GetTempPath()) 'planpruefer'
@@ -63,12 +63,12 @@ try {
                         Send-Json $ctx @{ fehler = 'Das ist keine PDF-Datei.' } 400
                         continue
                     }
-                    $res = @(Test-Plankopf $tmp)
+                    $res = @(Invoke-Pruefungen $tmp)
                     $befunde = @($res | ForEach-Object {
                             @{ angabe = $_.Angabe; ok = [bool]$_.Ok; wert = [string]$_.Wert; hinweis = [string]$_.Detail }
                         })
                     Write-Host ("{0}  {1}  ->  {2} Befund(e)" -f (Get-Date -Format 'HH:mm:ss'), $name, @($res | Where-Object { -not $_.Ok }).Count)
-                    Send-Json $ctx @{ datei = $name; befunde = $befunde }
+                    Send-Json $ctx @{ datei = $name; befunde = $befunde; aktiv = @(Get-AktivePruefungen) }
                 } finally {
                     if (Test-Path $tmp) { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
                 }

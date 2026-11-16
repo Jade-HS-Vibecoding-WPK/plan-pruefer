@@ -1,3 +1,9 @@
 # Beispielpläne bleiben nur auf den eigenen Rechnern
 testplaene/*
 !testplaene/LIESMICH.md
+
+# Hochschul-Unterlagen (Abgabekriterien) und lokale Schlüssel bleiben nur auf den eigenen Rechnern
+unterlagen/*
+!unterlagen/LIESMICH.md
+.env
+schluessel.txt

@@ -4,36 +4,52 @@ Ein Tool, das Baupläne auf Vollständigkeit und Richtigkeit prüft
 
 ## Idee
 
-Der Planprüfer ist eine Web-App für Architekturstudierende. Man lädt einen kompletten Plansatz als PDF-Dateien hoch und bekommt eine Prüfung zurück.
+Der Planprüfer ist eine Web-App für Architekturstudierende. Man lädt einen Grundriss als PDF hoch (Export aus ArchiCAD) und bekommt eine Liste mit Befunden zurück.
 
-### Was die erste Version können soll
+Die Prüfpunkte wachsen Schritt für Schritt. Die Einzelheiten stehen in [PRUEFKATALOG.md](PRUEFKATALOG.md), der Zeitplan in [PLAN.md](PLAN.md).
+
+### Was der Planprüfer können soll
 
 **Eingabe**
-- Ein ganzer Plansatz (mehrere PDFs, zum Beispiel Grundrisse, Schnitte und Ansichten), der auch untereinander abgeglichen wird.
+- Zunächst nur **Grundrisse** als PDF aus ArchiCAD mit auslesbarem Text.
+- Später: Schnitte, Ansichten und ganze Plansätze. IFC-Dateien kommen als Erweiterung, vor allem für Maße und Rechenwerte.
 
-**Prüfung auf Vollständigkeit**
-- Pflichtangaben im Plankopf (Projektname, Projektort mit Straße, Ort und Postleitzahl, Bauherr, Maßstab, Datum, Planer, Planbezeichnung, Plannummer)
-- Pflichtbestandteile im Plan (zum Beispiel Nordpfeil, Maßketten, Raumbezeichnungen, Legende)
-- Vorhandene Planarten (sind alle nötigen Pläne im Satz enthalten?)
+**Gruppe A: zeichnerische Pflichtinhalte (zuerst)**
+- Nordpfeil vorhanden
+- Bemaßung: Gesamtmaße, Außenmaßketten, Raummaße innen, Öffnungsmaße
+- Raumbezeichnungen: Jeder Raum hat einen Namen
+- Raumflächen: Jeder Raum hat eine Fläche, und die Angabe ist plausibel
+- Schnittlinien: mindestens ein Schnitt, Beschriftung an beiden Enden, Blickrichtung
+- Höhenangaben: Fußbodenhöhe je Geschoss und an Raumebenen
 
-**Prüfung auf Richtigkeit**
-- Stimmigkeit der Angaben (passen Maßstab, Maße und Plannummern über alle Pläne zusammen?)
-- Normen und Vorschriften (zum Beispiel Mindestbreiten von Türen und Fluren, Fluchtwege)
-- Rechenwerte (zum Beispiel Flächen und Volumen werden nachgerechnet)
-
-**Gegen welche Anforderungen wird geprüft?**
-- Abgabekriterien der Hochschule
-- Bauordnung und zugehörige Normen
+**Danach**
+- Gruppe B: Maße und Vorschriften (zum Beispiel Türbreiten, Flure, Treppen, Fluchtwege)
+- Gruppe C: Rechenwerte (zum Beispiel Summe der Raumflächen, NGF/BGF)
+- Gruppe D: Abgleich mehrerer Pläne und Vollständigkeit des Plansatzes
+- Abgabekriterien der Hochschule (Entwurfszeichnungen, Werkplanungen) und Bauordnung
 
 **Ergebnis**
 - Eine Liste mit Befunden, die man abhaken kann, sobald der Fehler korrigiert ist.
 - Markierungen direkt im Plan an der Stelle des Befunds.
 
 **Technik (grob)**
-- Eine Mischung aus festen Regeln (für alles Eindeutige, zum Beispiel Text und Zahlen vergleichen) und KI (für alles, was Verständnis des Plans braucht).
+- Feste Regeln für alles, was sich aus dem Text des PDFs ergibt.
+- KI für Zeichnungen, die sich nicht anders prüfen lassen (zum Beispiel der Nordpfeil). Gewählt ist Google Gemini im kostenlosen Zugang, als austauschbarer Baustein. Dabei dürfen nur eigene, unkritische Studienpläne gesendet werden.
+
+## App starten
+
+Doppelklick auf `Planpruefer-starten.cmd`. Das Fenster offen lassen, der Browser öffnet `http://localhost:8080`.
+
+## Ordner
+
+| Ordner / Datei | Inhalt |
+|----------------|--------|
+| `pruefung/` | Server, Weboberfläche und die Prüfpunkte |
+| `testplaene/` | Beispielpläne (nur lokal, nicht im Git) |
+| `unterlagen/` | Hochschul-Dokumente (nur lokal, nicht im Git) |
+| `archiv/plankopf/` | Erster Testlauf: Plankopf-Prüfung, nicht mehr Teil der App |
 
 ### Offene Punkte
 
-- Der Umfang "ganzer Plansatz" mit Markierungen im Plan ist für eine erste Version ziemlich groß. Falls es zu aufwendig wird, wäre ein Start mit nur Grundrissen und einer reinen Befundliste ein sinnvoller Zwischenschritt.
-- Welche Bauordnung (Bundesland) genau gilt, ist noch nicht festgelegt.
-- Die konkreten Prüfkriterien der Hochschule müssen noch gesammelt werden.
+- Welche Bauordnung (Bundesland) gilt, ist noch nicht festgelegt.
+- Die Kriterien der Hochschule müssen aus den Dokumenten für Entwurfszeichnungen und Werkplanungen herausgefiltert werden.
