@@ -7,3 +7,7 @@ unterlagen/*
 !unterlagen/LIESMICH.md
 .env
 schluessel.txt
+
+# Die ins Archiv verschobenen Testpläne bleiben ebenfalls nur lokal
+archiv/testplaene/*
+!archiv/testplaene/LIESMICH.md

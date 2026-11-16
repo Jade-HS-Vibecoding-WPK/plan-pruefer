@@ -7,7 +7,7 @@
 #>
 . "$PSScriptRoot\plankopf-pruefung.ps1"
 
-$ordner = Join-Path $PSScriptRoot '..\..\testplaene'
+$ordner = Join-Path $PSScriptRoot '..\testplaene'
 
 # Erwartung: welche Angabe soll bei welchem Plan als fehlend gemeldet werden?
 # (leere Liste = der Plan ist in Ordnung, es darf nichts gemeldet werden)

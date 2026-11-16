@@ -45,9 +45,10 @@ Doppelklick auf `Planpruefer-starten.cmd`. Das Fenster offen lassen, der Browser
 | Ordner / Datei | Inhalt |
 |----------------|--------|
 | `pruefung/` | Server, Weboberfläche und die Prüfpunkte |
-| `testplaene/` | Beispielpläne (nur lokal, nicht im Git) |
+| `testplaene/` | Beispielpläne für die Grundriss-Prüfung, getrennt nach `entwurf/` und `werk/` (nur lokal, nicht im Git) |
 | `unterlagen/` | Hochschul-Dokumente (nur lokal, nicht im Git) |
 | `archiv/plankopf/` | Erster Testlauf: Plankopf-Prüfung, nicht mehr Teil der App |
+| `archiv/testplaene/` | Die Testpläne zur Plankopf-Prüfung (nur lokal, nicht im Git) |
 
 ### Offene Punkte
 

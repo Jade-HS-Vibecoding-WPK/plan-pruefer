@@ -27,6 +27,37 @@ Stand: Entwurf, noch von euch gegenzulesen. Die Plankopf-Prüfung entfällt, sie
 
 Nicht gewählt (kann später kommen): Legende und Schraffuren, Kennzeichnung Bestand/Neu/Abbruch, Nutzungsnamen nach fester Liste.
 
+## Abgleich mit den Hochschul-Checklisten (Ordner `unterlagen/`)
+
+Gelesen: *Checkliste Entwurfsplanung* (Grundrisse M 1:100) und *Checkliste Werkplanung* (Grundrisse M 1:50). Beide enthalten außerdem Lageplan, Ansichten und Schnitte, die für den Start entfallen (nur Grundrisse).
+
+**Was die Checklisten für den Grundriss fordern und wie es zu unserem Katalog passt:**
+
+| Forderung der Hochschule | Entwurf | Werk | Im Katalog |
+|--------------------------|:------:|:----:|------------|
+| Nordpfeil | G.1.1 | G.1.6 | A1 |
+| **Eingangspfeil** | G.1.2 | G.1.7 | **neu: A8** (Zeichnung, KI) |
+| Schnittführung mit Bezeichnung und Blickrichtung | G.1.4 | G.1.5 | A6 |
+| Gesamtmaß, Außenmaß | G.2.1 | G.2.3 | A2 |
+| Außenmaße, Öffnungsmaße, Innenmaße | – | G.2.3 | A2 |
+| Achsen vermaßt, mit Bezeichnung | – | G.1.4, G.2.1 | **neu: A9** |
+| Höhenkoten | G.2.2 | G.2.4 | A7 |
+| **Brüstungshöhe (BRH) bei jedem Fenster, auch bei 0,00** | – | G.2.5 | **neu: A10** (Text) |
+| Raumstempel mit Raumbezeichnung und Fläche | G.3.1 | G.3.1 | A3, A4 |
+| Raumstempel zusätzlich mit **Umfang, Raumhöhe, Bodenbelag** | – | G.3.1 | A4 erweitert |
+| **Beschriftung des Planinhalts mit Angabe des Maßstabs** (zum Beispiel "Grundriss EG M 1:100") | G.3.2 | G.3.6 | **neu: A11** (Text) |
+| Plankopf mit allen wesentlichen Projektangaben | G.3.4 | G.3.7 | **Widerspruch**, siehe unten |
+
+**Nicht für Stufe 1** (reine Darstellungsfragen, schwer zu prüfen): Möblierung, Schraffuren, Linienarten (gepunktet, gestrichelt), vereinfachte Fenster und Türen, Bodenbeläge zeichnen, Fundamente, Estrichtrennfugen, Durchbrüche.
+
+**Widerspruch Plankopf:** Beide Checklisten fordern einen Plankopf mit allen wesentlichen Projektangaben. Wir haben die ausführliche Plankopf-Prüfung entfernt, weil Planköpfe zu individuell sind. Eine sehr einfache Prüfung "Plankopf vorhanden" bleibt als möglicher Punkt (Vorschlag: A12).
+
+**Entwurf oder Werkplanung?** Die beiden Checklisten unterscheiden sich im Umfang (Werkplanung verlangt mehr, zum Beispiel Achsen, BRH, Raumstempel mit Umfang, Höhe und Belag). Die App muss wissen, welche Liste gilt. Der Maßstab im Plan gibt einen Hinweis: 1:100 für Entwurf, 1:50 für Werkplanung.
+
+**Weitere Unterlagen:**
+- *Perfect Scale* (Schulz & Schulz) ist ein Buch über Darstellung und Detailtiefe je Maßstab (1:2000 bis 1:1). Es passt zu einer späteren Gruppe "Darstellung" (Linienstärken, Detailtiefe), nicht zu Stufe 1.
+- *Raumpilot 2012* (1604 Seiten, Wüstenrot Stiftung) ist ein Planungshandbuch mit Raumgrößen. Es eignet sich später für die Plausibilität von Raumflächen (Gruppe B/C). Der Text im PDF ist verschlüsselt kodiert und war so nicht ohne Weiteres lesbar.
+
 ## Vorgeschlagene Reihenfolge (einfachstes zuerst)
 
 1. **A4** Raumflächen vorhanden (reiner Text)
@@ -48,9 +79,10 @@ Jeder Punkt wird einzeln gebaut, getestet und committet. Dazu brauchen wir pro P
 ## Offen
 
 - Hochschul-Dokumente (Entwurfszeichnungen, Werkplanungen) in den Ordner `unterlagen/` legen. Daraus wird gefiltert, welche Kriterien für Grundrisse in Stufe 1 gelten.
-- Testpläne je Prüfpunkt besorgen (sauber und mit Fehler). Der frühere Plan ohne Nordpfeil (`02_einfamilienhaus_falsch.pdf`) liegt nicht mehr im Ordner `testplaene/`, falls er noch gebraucht wird, bitte wieder ablegen.
+- Testpläne je Prüfpunkt besorgen (sauber und mit Fehler) und in `testplaene/entwurf/` bzw. `testplaene/werk/` ablegen, Benennung siehe `testplaene/LIESMICH.md`. Die alten Plankopf-Testpläne in `archiv/testplaene/` zählen dafür nicht.
 
 ## Entschieden
 
 - Der **Nordpfeil** muss nur vorhanden sein, die Richtung wird nicht geprüft.
 - Die **Plankopf-Prüfung** ist aus der App entfernt und liegt als Vorlage in `archiv/plankopf/`.
+- Die Nutzerin **wählt vor dem Hochladen die Planungsphase** und wird bei jedem Besuch neu danach gefragt (die Auswahl wird nicht gespeichert): Entwurfsplanung (Checkliste Entwurf, 1:100) oder Werkplanung (Checkliste Werk, 1:50). Jeder Prüfpunkt legt in `pruefung/pruefungen.ps1` fest, für welche Phase er gilt.

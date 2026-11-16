@@ -49,6 +49,11 @@ try {
             elseif ($req.HttpMethod -eq 'POST' -and $path -eq '/pruefen') {
                 $name = [System.Uri]::UnescapeDataString([string]$req.Headers['X-Dateiname'])
                 if (-not $name) { $name = 'plan.pdf' }
+                $phase = ([string]$req.Headers['X-Phase']).ToLowerInvariant()
+                if ($phase -ne 'entwurf' -and $phase -ne 'werk') {
+                    Send-Json $ctx @{ fehler = 'Bitte zuerst die Planungsphase wählen (Entwurf oder Werkplanung).' } 400
+                    continue
+                }
                 if ($req.ContentLength64 -gt 100MB) {
                     Send-Json $ctx @{ fehler = 'Die Datei ist zu groß (maximal 100 MB).' } 413
                     continue
@@ -63,12 +68,12 @@ try {
                         Send-Json $ctx @{ fehler = 'Das ist keine PDF-Datei.' } 400
                         continue
                     }
-                    $res = @(Invoke-Pruefungen $tmp)
+                    $res = @(Invoke-Pruefungen $tmp $phase)
                     $befunde = @($res | ForEach-Object {
                             @{ angabe = $_.Angabe; ok = [bool]$_.Ok; wert = [string]$_.Wert; hinweis = [string]$_.Detail }
                         })
-                    Write-Host ("{0}  {1}  ->  {2} Befund(e)" -f (Get-Date -Format 'HH:mm:ss'), $name, @($res | Where-Object { -not $_.Ok }).Count)
-                    Send-Json $ctx @{ datei = $name; befunde = $befunde; aktiv = @(Get-AktivePruefungen) }
+                    Write-Host ("{0}  {1} ({2})  ->  {3} Befund(e)" -f (Get-Date -Format 'HH:mm:ss'), $name, $phase, @($res | Where-Object { -not $_.Ok }).Count)
+                    Send-Json $ctx @{ datei = $name; phase = $phase; befunde = $befunde; aktiv = @(Get-AktivePruefungen $phase) }
                 } finally {
                     if (Test-Path $tmp) { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
                 }

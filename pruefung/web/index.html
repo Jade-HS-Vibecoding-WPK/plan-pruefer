@@ -23,6 +23,17 @@
   .kicker { color: var(--accent); letter-spacing: .15em; text-transform: uppercase; font-weight: 700; font-size: 13px; }
   h1 { font-family: Georgia, serif; font-size: 40px; line-height: 1.15; margin: 4px 0 8px; }
   .sub { color: var(--muted); margin: 0 0 28px; max-width: 60ch; }
+  fieldset.phase { border: 0; padding: 0; margin: 0 0 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  fieldset.phase legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
+  .phase label { display: block; background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; }
+  .phase label:hover { border-color: var(--accent); }
+  .phase label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+  .phase input { accent-color: var(--accent); margin-right: 8px; }
+  .phase b { display: inline; }
+  .phase span { color: var(--muted); font-size: 14px; margin-left: 24px; display: block; }
+  .drop.gesperrt { opacity: .5; cursor: not-allowed; }
+  .phasen-tag { font-size: 12px; color: var(--muted); font-weight: 600; }
+  @media (max-width: 520px) { fieldset.phase { grid-template-columns: 1fr; } }
   .drop { display: block; background: var(--card); border: 2px dashed var(--line); border-radius: 14px; padding: 36px 20px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
   .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
   .drop strong { display: block; font-size: 18px; margin-bottom: 4px; }
@@ -60,9 +71,15 @@
   <h1>Planprüfer</h1>
   <p class="sub">Lade einen Grundriss als PDF hoch. Der Planprüfer kontrolliert, ob die zeichnerischen Pflichtinhalte vorhanden sind. Die Prüfpunkte kommen nach und nach dazu.</p>
 
-  <label class="drop" id="drop">
+  <fieldset class="phase">
+    <legend>1. Welche Planungsphase soll geprüft werden?</legend>
+    <label><input type="radio" name="phase" value="entwurf" autocomplete="off"><b>Entwurfsplanung</b><span>Checkliste Entwurfsplanung, Grundrisse M 1:100</span></label>
+    <label><input type="radio" name="phase" value="werk" autocomplete="off"><b>Werkplanung</b><span>Checkliste Werkplanung, Grundrisse M 1:50</span></label>
+  </fieldset>
+
+  <label class="drop gesperrt" id="drop">
     <input type="file" id="datei" accept="application/pdf,.pdf" multiple>
-    <strong>PDF hierher ziehen oder klicken</strong>
+    <strong id="dropTitel">2. PDF hierher ziehen oder klicken</strong>
     <span>ArchiCAD-Export mit auslesbarem Text. Es können mehrere Dateien gleichzeitig geprüft werden.</span>
   </label>
   <div class="hinweis">Die Datei wird nur auf diesem Rechner geprüft und nicht ins Internet gesendet.</div>
@@ -81,10 +98,27 @@
   const input = document.getElementById('datei');
   const ergebnisse = document.getElementById('ergebnisse');
 
+  const PHASEN = { entwurf: 'Entwurfsplanung', werk: 'Werkplanung' };
+  const radios = Array.from(document.querySelectorAll('input[name=phase]'));
+  const dropTitel = document.getElementById('dropTitel');
+  function aktuellePhase() { const r = radios.find(x => x.checked); return r ? r.value : null; }
+  function aktualisiereSperre() {
+    const frei = !!aktuellePhase();
+    drop.classList.toggle('gesperrt', !frei);
+    input.disabled = !frei;
+    dropTitel.textContent = frei ? '2. PDF hierher ziehen oder klicken' : '2. PDF hochladen (erst die Planungsphase wählen)';
+  }
+  // Die Phase wird bewusst nicht gemerkt: bei jedem Besuch (und Neuladen) wird neu gefragt.
+  radios.forEach(r => { r.checked = false; r.addEventListener('change', aktualisiereSperre); });
+  aktualisiereSperre();
+
   input.addEventListener('change', () => { pruefeDateien(input.files); input.value = ''; });
-  ['dragenter', 'dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+  ['dragenter', 'dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); if (aktuellePhase()) drop.classList.add('over'); }));
   ['dragleave', 'drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
-  drop.addEventListener('drop', ev => pruefeDateien(ev.dataTransfer.files));
+  drop.addEventListener('drop', ev => {
+    if (!aktuellePhase()) { zeigeFehler('Bitte zuerst die Planungsphase wählen: Entwurfsplanung oder Werkplanung.'); return; }
+    pruefeDateien(ev.dataTransfer.files);
+  });
 
   // Die Seite muss über den Planprüfer-Server geöffnet werden (http://localhost:8080), nicht als Datei.
   if (location.protocol !== 'http:' && location.protocol !== 'https:') {
@@ -96,11 +130,13 @@
   }
 
   async function pruefeDateien(liste) {
+    const phase = aktuellePhase();
+    if (!phase) { zeigeFehler('Bitte zuerst die Planungsphase wählen: Entwurfsplanung oder Werkplanung.'); return; }
     for (const f of Array.from(liste)) {
       if (!/\.pdf$/i.test(f.name)) { zeigeFehler(`„${f.name}“ ist keine PDF-Datei.`); continue; }
       const karte = neueKarte(f.name);
       try {
-        const r = await fetch('/pruefen', { method: 'POST', headers: { 'X-Dateiname': encodeURIComponent(f.name) }, body: f });
+        const r = await fetch('/pruefen', { method: 'POST', headers: { 'X-Dateiname': encodeURIComponent(f.name), 'X-Phase': phase }, body: f });
         const daten = await r.json();
         if (!r.ok) throw new Error(daten.fehler || 'Unbekannter Fehler');
         zeigeErgebnis(karte, daten);
@@ -136,7 +172,9 @@
     karte.textContent = '';
     const kopf = el('div', 'card-head');
     const badge = el('span', 'badge');
-    kopf.append(el('h2', '', daten.datei), badge);
+    const titel = el('h2', '', daten.datei);
+    if (daten.phase && PHASEN[daten.phase]) titel.append(document.createElement('br'), el('span', 'phasen-tag', 'Geprüft als: ' + PHASEN[daten.phase]));
+    kopf.append(titel, badge);
     const liste = el('ul', 'befunde');
     karte.append(kopf, liste);
 

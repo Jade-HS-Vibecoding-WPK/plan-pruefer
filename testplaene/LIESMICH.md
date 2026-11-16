@@ -1,33 +1,48 @@
-# Testpläne
+# Testpläne für die Grundriss-Prüfung
 
-Hier liegen die Beispielpläne (PDF), an denen der Planprüfer getestet wird.
+Hier liegen die Beispielpläne (PDF aus ArchiCAD), an denen die Prüfpunkte der Gruppe A getestet werden.
 Die Pläne selbst werden **nicht** ins Git hochgeladen (siehe `.gitignore`), sie bleiben nur auf den eigenen Rechnern.
+
+Die alten Testpläne der Plankopf-Prüfung liegen im Archiv (`archiv/testplaene/`) und werden hier **nicht** verwendet.
+
+## Aufbau
+
+| Ordner | Inhalt |
+|--------|--------|
+| `entwurf/` | Grundrisse M 1:100 für die Prüfung als **Entwurfsplanung** |
+| `werk/` | Grundrisse M 1:50 für die Prüfung als **Werkplanung** |
 
 ## Benennung
 
-`<nr>_<kurzname>_<ok|fehler>.pdf`, zum Beispiel:
+`<prüfpunkt>_<ok|fehler>_<kurzbeschreibung>.pdf`, zum Beispiel:
 
-- `01_einfamilienhaus_ok.pdf` – sauberer Plan, es sollte keine Befunde geben
-- `02_einfamilienhaus_fehler.pdf` – Plan mit absichtlich eingebauten Fehlern
+- `A4_ok_einfamilienhaus.pdf` – alle Raumflächen vorhanden, es darf kein Befund kommen
+- `A4_fehler_flaeche-fehlt-flur.pdf` – beim Raum "Flur" fehlt die Fläche, genau dieser Befund muss kommen
+
+Ein Plan ohne Zusatz (`ok_gesamt`) darf für **alle** Prüfpunkte keinen Befund auslösen.
+
+## Prüfpunkte
+
+Die Nummern stammen aus [PRUEFKATALOG.md](../PRUEFKATALOG.md).
+
+| Nr. | Prüfpunkt | Phase |
+|-----|-----------|-------|
+| A1 | Nordpfeil vorhanden | Entwurf, Werk |
+| A2 | Bemaßung (Gesamtmaße, Außenmaßketten, Raummaße, Öffnungsmaße) | Entwurf (Gesamt-, Außenmaß), Werk (alles) |
+| A3 | Raumbezeichnungen | Entwurf, Werk |
+| A4 | Raumflächen (Werk zusätzlich Umfang, Raumhöhe, Bodenbelag) | Entwurf, Werk |
+| A5 | Flächenangabe plausibel | Entwurf, Werk |
+| A6 | Schnittlinien mit Bezeichnung und Blickrichtung | Entwurf, Werk |
+| A7 | Höhenangaben | Entwurf, Werk |
+| A8 | Eingangspfeil | Entwurf, Werk |
+| A9 | Achsen vermaßt und bezeichnet | Werk |
+| A10 | Brüstungshöhe (BRH) bei jedem Fenster | Werk |
+| A11 | Maßstab im Planinhalt beschriftet | Entwurf, Werk |
 
 ## Fehlerliste
 
-Zu jedem Plan mit Fehlern notieren wir unten, welche Fehler eingebaut sind. So sehen wir, ob das Tool sie findet.
+Zu jedem Plan mit Fehler notieren wir, welcher Fehler eingebaut ist. Die Spalte "Gefunden?" füllen wir nach dem Test aus.
 
-| Datei | Eingebauter Fehler | Gefunden? |
-|-------|--------------------|-----------|
-| 02_einfamilienhaus_falsch.pdf | Nordpfeil fehlt (Zeichnung, erst ab Stufe 2 prüfbar) | |
-| 03_einfamilienhaus_falsch.pdf | Baumaßnahme fehlt | |
-| 04_einfamilienhaus_falsch.pdf | Bauort fehlt | |
-| 05_einfamilienhaus_falsch.pdf | Bauherr fehlt | |
-| 06_einfamilienhaus_falsch.pdf | Planbezeichnung fehlt | |
-| 07_einfamilienhaus_falsch.pdf | Planer fehlt | |
-| 08_einfamilienhaus_falsch.pdf | Datum fehlt | |
-| 09_einfamilienhaus_falsch.pdf | Maßstab fehlt | |
-| 10_einfamilienhaus_falsch.pdf | Plannummer fehlt | |
-
-## Plankopf-Varianten ohne Fehler
-
-- `01_einfamilienhaus_ok.pdf` und `02_einfamilienhaus_ok.pdf` sind identisch (Layout 1).
-- `02_einfamileienhaus_ok_plankopf variante 2.pdf` (Layout 2)
-- `02_einfamileienhaus_ok_plankopf variante 3.pdf` (Layout 3)
+| Datei | Phase | Eingebauter Fehler | Gefunden? |
+|-------|-------|--------------------|-----------|
+| | | | |
