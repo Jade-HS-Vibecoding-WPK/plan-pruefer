@@ -12,7 +12,7 @@ Der Planprüfer ist eine Web-App für Architekturstudierende. Man lädt einen ko
 - Ein ganzer Plansatz (mehrere PDFs, zum Beispiel Grundrisse, Schnitte und Ansichten), der auch untereinander abgeglichen wird.
 
 **Prüfung auf Vollständigkeit**
-- Pflichtangaben im Plankopf (Projektname, Projektort mit Straße, Ort und Postleitzahl, Bauherr, Maßstab, Datum, Planer, Plannummer)
+- Pflichtangaben im Plankopf (Projektname, Projektort mit Straße, Ort und Postleitzahl, Bauherr, Maßstab, Datum, Planer, Planbezeichnung, Plannummer)
 - Pflichtbestandteile im Plan (zum Beispiel Nordpfeil, Maßketten, Raumbezeichnungen, Legende)
 - Vorhandene Planarten (sind alle nötigen Pläne im Satz enthalten?)
 

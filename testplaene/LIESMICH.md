@@ -16,4 +16,11 @@ Zu jedem Plan mit Fehlern notieren wir unten, welche Fehler eingebaut sind. So s
 
 | Datei | Eingebauter Fehler | Gefunden? |
 |-------|--------------------|-----------|
-| 02_einfamilienhaus_fehler.pdf | zum Beispiel: Maßstab fehlt im Plankopf | |
+| 02_einfamilienhaus_fehler.pdf | Nordpfeil fehlt |
+| 03_einfamilienhaus_fehler.pdf | Baumaßnahme fehlt |
+| 04_einfamilienhaus_fehler.pdf | Bauort fehlt |
+| 05_einfamilienhaus_fehler.pdf | Bauherr fehlt |
+| 06_einfamilienhaus_fehler.pdf | Planbezeichnung fehlt |
+| 07_einfamilienhaus_fehler.pdf | Planer fehlt |
+| 08_einfamilienhaus_fehler.pdf | Datum fehlt |
+| 09_einfamilienhaus_fehler.pdf | Maßstab fehlt |
