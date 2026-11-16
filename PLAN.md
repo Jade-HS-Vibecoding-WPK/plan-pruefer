@@ -32,11 +32,11 @@ Leitregel: Jeden Tag muss etwas Lauffähiges stehen. Lieber eine kleine Version,
 
 **Ziel:** Es läuft und sieht nach uns aus.
 
-- [ ] Web-App-Grundgerüst aufsetzen, die sich im Browser öffnen lässt
-- [ ] Seite zum Hochladen von PDF-Dateien
-- [ ] Platzhalter für die Befundliste (zunächst mit Beispieltexten)
-- [ ] Aussehen festlegen: Farben, Schrift, Logo, Name "Planprüfer"
-- [ ] Ampelfarben für die Befunde (ok, Warnung, Fehler)
+- [x] Web-App-Grundgerüst aufsetzen, die sich im Browser öffnen lässt (schon am Montag, Start per `Planpruefer-starten.cmd`)
+- [x] Seite zum Hochladen von PDF-Dateien
+- [x] Befundliste, schon mit echten Ergebnissen der Plankopf-Prüfung statt Beispieltexten
+- [ ] Aussehen festlegen: Farben, Schrift, Logo, Name "Planprüfer" (erste Fassung steht, Feinschliff offen)
+- [x] Ampelfarben für die Befunde (grün = vorhanden, rot = fehlt, grau = korrigiert)
 
 **Fertig, wenn:** Man kann eine PDF hochladen und sieht eine (noch gespielte) Befundliste in unserem Design.
 

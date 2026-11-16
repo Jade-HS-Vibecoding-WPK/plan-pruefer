@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planprüfer</title>
+<style>
+  :root {
+    --bg: #f2f4f4; --card: #ffffff; --text: #1a1f1f; --muted: #5a6565; --line: #d9dfdf;
+    --accent: #0e6f7a; --accent-soft: #e3f1f2;
+    --ok: #1f7a3d; --ok-bg: #e4f4ea; --bad: #b3261e; --bad-bg: #fbe9e7; --warn-bg: #fff4d6; --warn: #7a5a00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121616; --card: #1b2121; --text: #e8eded; --muted: #9aa8a8; --line: #2c3636;
+      --accent: #4fc3cf; --accent-soft: #17302f;
+      --ok: #6fd18b; --ok-bg: #16301f; --bad: #ff8a80; --bad-bg: #3a1c19; --warn-bg: #352c10; --warn: #e6c25c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 "Segoe UI", system-ui, sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  .kicker { color: var(--accent); letter-spacing: .15em; text-transform: uppercase; font-weight: 700; font-size: 13px; }
+  h1 { font-family: Georgia, serif; font-size: 40px; line-height: 1.15; margin: 4px 0 8px; }
+  .sub { color: var(--muted); margin: 0 0 28px; max-width: 60ch; }
+  .drop { display: block; background: var(--card); border: 2px dashed var(--line); border-radius: 14px; padding: 36px 20px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop strong { display: block; font-size: 18px; margin-bottom: 4px; }
+  .drop span { color: var(--muted); font-size: 14px; }
+  .drop input { display: none; }
+  .hinweis { margin-top: 12px; font-size: 14px; color: var(--muted); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-top: 20px; overflow: hidden; }
+  .card-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+  .card-head h2 { font-size: 17px; margin: 0; word-break: break-all; }
+  .badge { font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 999px; }
+  .badge.ok { background: var(--ok-bg); color: var(--ok); }
+  .badge.bad { background: var(--bad-bg); color: var(--bad); }
+  .badge.wait { background: var(--accent-soft); color: var(--accent); }
+  ul.befunde { list-style: none; margin: 0; padding: 0; }
+  ul.befunde li { display: grid; grid-template-columns: 28px 1fr; gap: 4px 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); align-items: start; }
+  ul.befunde li:last-child { border-bottom: 0; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; margin-top: 6px; justify-self: center; }
+  .dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); } .dot.done { background: var(--muted); }
+  .angabe { font-weight: 700; }
+  .wert { color: var(--muted); font-size: 14px; word-break: break-word; }
+  .fehlt { color: var(--bad); font-size: 14px; }
+  li.erledigt .angabe, li.erledigt .fehlt { text-decoration: line-through; color: var(--muted); }
+  label.haken { display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 14px; cursor: pointer; }
+  label.haken input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .fehler { background: var(--bad-bg); color: var(--bad); border-radius: 10px; padding: 12px 16px; margin-top: 20px; }
+  .grenzen { margin-top: 28px; padding: 14px 18px; background: var(--warn-bg); color: var(--warn); border-radius: 10px; font-size: 14px; }
+  .grenzen b { color: inherit; }
+  footer { margin-top: 36px; color: var(--muted); font-size: 13px; }
+  @media (max-width: 520px) { h1 { font-size: 30px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Stufe 1 · Plankopf</div>
+  <h1>Planprüfer</h1>
+  <p class="sub">Lade einen Grundriss als PDF hoch. Der Planprüfer kontrolliert, ob alle Pflichtangaben im Plankopf vorhanden sind.</p>
+
+  <label class="drop" id="drop">
+    <input type="file" id="datei" accept="application/pdf,.pdf" multiple>
+    <strong>PDF hierher ziehen oder klicken</strong>
+    <span>ArchiCAD-Export mit auslesbarem Text. Es können mehrere Dateien gleichzeitig geprüft werden.</span>
+  </label>
+  <div class="hinweis">Die Datei wird nur auf diesem Rechner geprüft und nicht ins Internet gesendet.</div>
+
+  <div id="ergebnisse"></div>
+
+  <div class="grenzen">
+    <b>Geprüft wird:</b> Projektname, Projektort (Straße, Postleitzahl, Ort), Bauherr, Maßstab, Datum, Planer, Planbezeichnung, Plannummer.<br>
+    <b>Noch nicht geprüft:</b> Nordpfeil, Maßketten, Raumbezeichnungen, Legende, Abgleich mehrerer Pläne, Normen.
+  </div>
+  <footer>Planprüfer · Prototyp, Stufe 1. Die Prüfung findet fehlende Angaben, sie ersetzt keine Prüfung durch Fachpersonen.</footer>
+</div>
+
+<script>
+  const drop = document.getElementById('drop');
+  const input = document.getElementById('datei');
+  const ergebnisse = document.getElementById('ergebnisse');
+
+  input.addEventListener('change', () => { pruefeDateien(input.files); input.value = ''; });
+  ['dragenter', 'dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', ev => pruefeDateien(ev.dataTransfer.files));
+
+  // Die Seite muss über den Planprüfer-Server geöffnet werden (http://localhost:8080), nicht als Datei.
+  if (location.protocol !== 'http:' && location.protocol !== 'https:') {
+    const b = el('div', 'fehler');
+    b.append(document.createTextNode('Diese Seite wurde direkt als Datei geöffnet, deshalb funktioniert der Upload nicht. Bitte „Planpruefer-starten.cmd“ im Projektordner doppelklicken. Dann öffnet sich die Seite unter '));
+    const a = el('a', '', 'http://localhost:8080'); a.href = 'http://localhost:8080';
+    b.append(a, document.createTextNode('.'));
+    document.querySelector('.wrap').insertBefore(b, drop);
+  }
+
+  async function pruefeDateien(liste) {
+    for (const f of Array.from(liste)) {
+      if (!/\.pdf$/i.test(f.name)) { zeigeFehler(`„${f.name}“ ist keine PDF-Datei.`); continue; }
+      const karte = neueKarte(f.name);
+      try {
+        const r = await fetch('/pruefen', { method: 'POST', headers: { 'X-Dateiname': encodeURIComponent(f.name) }, body: f });
+        const daten = await r.json();
+        if (!r.ok) throw new Error(daten.fehler || 'Unbekannter Fehler');
+        zeigeErgebnis(karte, daten);
+      } catch (e) {
+        karte.remove();
+        const grund = (e instanceof TypeError)
+          ? 'Der Planprüfer-Server ist nicht erreichbar. Läuft das Fenster von „Planpruefer-starten.cmd“ noch?'
+          : e.message;
+        zeigeFehler(`„${f.name}“ konnte nicht geprüft werden: ${grund}`);
+      }
+    }
+  }
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function neueKarte(name) {
+    const karte = el('section', 'card');
+    const kopf = el('div', 'card-head');
+    kopf.append(el('h2', '', name), el('span', 'badge wait', 'wird geprüft …'));
+    karte.append(kopf);
+    ergebnisse.prepend(karte);
+    return karte;
+  }
+
+  function zeigeFehler(text) { const d = el('div', 'fehler', text); ergebnisse.prepend(d); setTimeout(() => d.remove(), 8000); }
+
+  function zeigeErgebnis(karte, daten) {
+    karte.textContent = '';
+    const kopf = el('div', 'card-head');
+    const badge = el('span', 'badge');
+    kopf.append(el('h2', '', daten.datei), badge);
+    const liste = el('ul', 'befunde');
+    karte.append(kopf, liste);
+
+    const items = [];
+    for (const b of daten.befunde) {
+      const li = el('li');
+      const dot = el('span', 'dot ' + (b.ok ? 'ok' : 'bad'));
+      const inhalt = el('div');
+      inhalt.append(el('div', 'angabe', b.angabe));
+      if (b.ok) {
+        inhalt.append(el('div', 'wert', b.wert));
+      } else {
+        inhalt.append(el('div', 'fehlt', b.hinweis || 'Angabe fehlt.'));
+        if (b.wert) inhalt.append(el('div', 'wert', 'Gefunden: ' + b.wert));
+        const lab = el('label', 'haken');
+        const cb = el('input'); cb.type = 'checkbox';
+        lab.append(cb, document.createTextNode('Korrigiert'));
+        cb.addEventListener('change', aktualisiere);
+        inhalt.append(lab);
+        items.push({ li, dot, cb });
+      }
+      li.append(dot, inhalt);
+      liste.append(li);
+    }
+
+    function aktualisiere() {
+      let offen = 0;
+      for (const it of items) {
+        it.li.classList.toggle('erledigt', it.cb.checked);
+        it.dot.className = 'dot ' + (it.cb.checked ? 'done' : 'bad');
+        if (!it.cb.checked) offen++;
+      }
+      if (items.length === 0) { badge.className = 'badge ok'; badge.textContent = 'Alle Angaben vorhanden'; }
+      else if (offen === 0) { badge.className = 'badge ok'; badge.textContent = 'Alles korrigiert – bitte neu hochladen'; }
+      else { badge.className = 'badge bad'; badge.textContent = offen + (offen === 1 ? ' Angabe fehlt' : ' Angaben fehlen'); }
+    }
+    aktualisiere();
+  }
+  window.zeigeDemo = (daten) => zeigeErgebnis(neueKarte(daten.datei), daten);
+</script>
+</body>
+</html>
