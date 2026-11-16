@@ -49,7 +49,7 @@ Leitregel: Jeden Tag muss etwas Lauffähiges stehen. Lieber eine kleine Version,
 - [ ] Hochgeladene PDFs wirklich einlesen (Text und Zahlen auslesen)
 - [ ] Prüfliste der Hochschule (Abgabekriterien) in eine maschinenlesbare Form bringen
 - [ ] Ausgewählte Regeln aus der Bauordnung und den Normen erfassen (zum Beispiel Mindestbreiten von Türen und Fluren)
-- [ ] Erste feste Regeln umsetzen: Plankopf-Angaben vorhanden? Maßstab, Datum, Plannummer?
+- [ ] Erste feste Regeln umsetzen: Plankopf-Angaben vorhanden? Projektname, Projektort (Straße, Ort, PLZ), Bauherr, Maßstab, Datum, Planer, Plannummer?
 - [ ] KI anbinden für alles, was Verständnis braucht (zum Beispiel: Ist ein Nordpfeil im Plan?)
 - [ ] Befundliste mit echten Ergebnissen füllen, Befunde lassen sich abhaken
 
@@ -94,7 +94,7 @@ Wir starten mit der kleinsten sinnvollen Version und bauen in Stufen aus. Jede S
 
 | Stufe | Was wird geprüft | Technik |
 |-------|------------------|---------|
-| 1 (Start) | **Ein Grundriss**, nur **Plankopf**: Projektname, Maßstab, Datum, Planer, Plannummer. Ergebnis als abhakbare Befundliste. | feste Regeln |
+| 1 (Start) | **Ein Grundriss**, nur **Plankopf**. Geprüft wird, ob diese Angaben vorhanden sind: Projektname, Projektort (Straße, Ort und Postleitzahl), Bauherr, Maßstab, Datum, Planer, Plannummer. Ergebnis als abhakbare Befundliste. | feste Regeln |
 | 2 | Pflichtbestandteile im Plan: Nordpfeil, Maßketten, Raumbezeichnungen, Legende | feste Regeln + KI |
 | 3 | Mehrere Pläne (Plansatz): Angaben über alle Pläne abgleichen, vorhandene Planarten | feste Regeln |
 | 4 | Normen und Bauordnung (Türen, Flure, Fluchtwege), Rechenwerte | feste Regeln + KI |
@@ -113,6 +113,6 @@ Der Umfang "ganzer Plansatz mit Markierungen im Plan" ist groß. Wenn am Mittwoc
 ## Risiken
 
 - **KI ist nicht immer zuverlässig.** Befunde der KI werden als Hinweis gekennzeichnet, nicht als sicheres Urteil.
-- **PDFs sind unterschiedlich.** Gescannte Pläne lassen sich schlecht auslesen. Wir testen früh mit echten Plänen.
+- **PDFs sind unterschiedlich.** Unsere Pläne sind aus ArchiCAD exportierte PDFs und enthalten daher meist echten Text, der sich direkt auslesen lässt. Gescannte Pläne wären deutlich schwieriger und gehören nicht zum Umfang. Wir testen früh mit echten Plänen. Geprüft: Der Text im Musterplan lässt sich markieren und kopieren, ist also auslesbar.
 - **Bauordnung und Normen sind umfangreich.** Wir bilden nur eine kleine Auswahl ab und sagen das offen.
 - **Wir können wenig programmieren.** Wir arbeiten mit Claude Code, geben kleine Aufgaben und testen jeden Schritt, bevor der nächste kommt.
