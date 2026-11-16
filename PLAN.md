@@ -49,7 +49,7 @@ Leitregel: Jeden Tag muss etwas Lauffähiges stehen. Lieber eine kleine Version,
 - [ ] Hochgeladene PDFs wirklich einlesen (Text und Zahlen auslesen)
 - [ ] Prüfliste der Hochschule (Abgabekriterien) in eine maschinenlesbare Form bringen
 - [ ] Ausgewählte Regeln aus der Bauordnung und den Normen erfassen (zum Beispiel Mindestbreiten von Türen und Fluren)
-- [ ] Erste feste Regeln umsetzen: Plankopf-Angaben vorhanden? Maßstab, Datum, Plannummer?
+- [ ] Erste feste Regeln umsetzen: Plankopf-Angaben vorhanden? Projektname, Projektort (Straße, Ort, PLZ), Bauherr, Maßstab, Datum, Planer, Planbezeichnung, Plannummer?
 - [ ] KI anbinden für alles, was Verständnis braucht (zum Beispiel: Ist ein Nordpfeil im Plan?)
 - [ ] Befundliste mit echten Ergebnissen füllen, Befunde lassen sich abhaken
 
@@ -94,11 +94,17 @@ Wir starten mit der kleinsten sinnvollen Version und bauen in Stufen aus. Jede S
 
 | Stufe | Was wird geprüft | Technik |
 |-------|------------------|---------|
-| 1 (Start) | **Ein Grundriss**, nur **Plankopf**: Projektname, Maßstab, Datum, Planer, Plannummer. Ergebnis als abhakbare Befundliste. | feste Regeln |
+| 1 (Start) | **Ein Grundriss**, nur **Plankopf**. Geprüft wird, ob diese Angaben vorhanden sind: Projektname, Projektort (Straße, Ort und Postleitzahl), Bauherr, Maßstab, Datum, Planer, Planbezeichnung, Plannummer. Ergebnis als abhakbare Befundliste. | feste Regeln |
 | 2 | Pflichtbestandteile im Plan: Nordpfeil, Maßketten, Raumbezeichnungen, Legende | feste Regeln + KI |
 | 3 | Mehrere Pläne (Plansatz): Angaben über alle Pläne abgleichen, vorhandene Planarten | feste Regeln |
 | 4 | Normen und Bauordnung (Türen, Flure, Fluchtwege), Rechenwerte | feste Regeln + KI |
 | 5 | Markierungen direkt im Plan | |
+
+**Begriffe im Plankopf** (wichtig, weil sie leicht verwechselt werden):
+- **Planbezeichnung:** der Name des Plans zum Einreichen des Bauantrags, zum Beispiel `03_Grundriss_EG_20260331_V1`.
+- **Plannummer:** die laufende Nummer des Plans. Sie kommt in zwei Schreibweisen vor: als Geschossnummer wie `G01` (Erdgeschoss), `G02` (1. Obergeschoss) usw., oder als einfache Zahl wie `2`. Beide Schreibweisen zählen als vorhanden.
+- Dieselbe Angabe heißt in den Plankopf-Layouts unterschiedlich (zum Beispiel Bauherr/-in, Bauherr, AUFTRAGGEBER; Baumaßnahme, Projekt, BAUVORHABEN; Planer, Planverfasser, Planersteller). Das Tool nutzt eine Synonymliste.
+- Der **Nordpfeil** ist eine Zeichnung und im Text nicht erkennbar. Er wird erst in Stufe 2 geprüft.
 
 Testplan: Die Beispielpläne liegen im Ordner `testplaene/` (nicht im Git, siehe dort die LIESMICH.md). Für jede Stufe testen wir mit einem sauberen Plan und einem Plan mit absichtlich eingebauten Fehlern.
 
@@ -113,6 +119,6 @@ Der Umfang "ganzer Plansatz mit Markierungen im Plan" ist groß. Wenn am Mittwoc
 ## Risiken
 
 - **KI ist nicht immer zuverlässig.** Befunde der KI werden als Hinweis gekennzeichnet, nicht als sicheres Urteil.
-- **PDFs sind unterschiedlich.** Gescannte Pläne lassen sich schlecht auslesen. Wir testen früh mit echten Plänen.
+- **PDFs sind unterschiedlich.** Unsere Pläne sind aus ArchiCAD exportierte PDFs und enthalten daher meist echten Text, der sich direkt auslesen lässt. Gescannte Pläne wären deutlich schwieriger und gehören nicht zum Umfang. Wir testen früh mit echten Plänen. Geprüft: Der Text im Musterplan lässt sich markieren und kopieren, ist also auslesbar.
 - **Bauordnung und Normen sind umfangreich.** Wir bilden nur eine kleine Auswahl ab und sagen das offen.
 - **Wir können wenig programmieren.** Wir arbeiten mit Claude Code, geben kleine Aufgaben und testen jeden Schritt, bevor der nächste kommt.
