@@ -20,9 +20,9 @@ Leitregel: Jeden Tag muss etwas Lauffähiges stehen. Lieber eine kleine Version,
 
 - [x] Idee geklärt und in der README zusammengefasst
 - [x] Umsetzungsplan in PLAN.md geschrieben
-- [ ] Umfang für die Woche festlegen (siehe "Abspecken, falls es eng wird")
-- [ ] Git auf dem Rechner einrichten, damit wir Änderungen speichern können
-- [ ] Zwei bis drei echte Beispielpläne (PDF) sammeln, an denen wir testen
+- [x] Umfang für die Woche festlegen (siehe "Umfang: klein anfangen, dann ausbauen")
+- [x] Git einrichten (GitHub Desktop)
+- [ ] Zwei bis drei echte Beispielpläne (PDF) in den Ordner `testplaene/` legen (ein sauberer Plan, ein Plan mit absichtlichen Fehlern)
 
 **Fertig, wenn:** Alle im Team wissen, was bis Freitag entstehen soll.
 
@@ -87,6 +87,20 @@ Nachmittag (nach dem Freeze):
 - [ ] Präsentieren: Idee, Demo, was funktioniert, was als Nächstes käme
 
 ---
+
+## Umfang: klein anfangen, dann ausbauen
+
+Wir starten mit der kleinsten sinnvollen Version und bauen in Stufen aus. Jede Stufe läuft für sich, bevor die nächste beginnt.
+
+| Stufe | Was wird geprüft | Technik |
+|-------|------------------|---------|
+| 1 (Start) | **Ein Grundriss**, nur **Plankopf**: Projektname, Maßstab, Datum, Planer, Plannummer. Ergebnis als abhakbare Befundliste. | feste Regeln |
+| 2 | Pflichtbestandteile im Plan: Nordpfeil, Maßketten, Raumbezeichnungen, Legende | feste Regeln + KI |
+| 3 | Mehrere Pläne (Plansatz): Angaben über alle Pläne abgleichen, vorhandene Planarten | feste Regeln |
+| 4 | Normen und Bauordnung (Türen, Flure, Fluchtwege), Rechenwerte | feste Regeln + KI |
+| 5 | Markierungen direkt im Plan | |
+
+Testplan: Die Beispielpläne liegen im Ordner `testplaene/` (nicht im Git, siehe dort die LIESMICH.md). Für jede Stufe testen wir mit einem sauberen Plan und einem Plan mit absichtlich eingebauten Fehlern.
 
 ## Abspecken, falls es eng wird
 

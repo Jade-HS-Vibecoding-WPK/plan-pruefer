@@ -1,0 +1,3 @@
+# Beispielpläne bleiben nur auf den eigenen Rechnern
+testplaene/*
+!testplaene/LIESMICH.md
