@@ -56,9 +56,9 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="kicker">Stufe 1 · Plankopf</div>
+  <div class="kicker">Grundrisse · Gruppe A</div>
   <h1>Planprüfer</h1>
-  <p class="sub">Lade einen Grundriss als PDF hoch. Der Planprüfer kontrolliert, ob alle Pflichtangaben im Plankopf vorhanden sind.</p>
+  <p class="sub">Lade einen Grundriss als PDF hoch. Der Planprüfer kontrolliert, ob die zeichnerischen Pflichtinhalte vorhanden sind. Die Prüfpunkte kommen nach und nach dazu.</p>
 
   <label class="drop" id="drop">
     <input type="file" id="datei" accept="application/pdf,.pdf" multiple>
@@ -70,10 +70,10 @@
   <div id="ergebnisse"></div>
 
   <div class="grenzen">
-    <b>Geprüft wird:</b> Projektname, Projektort (Straße, Postleitzahl, Ort), Bauherr, Maßstab, Datum, Planer, Planbezeichnung, Plannummer.<br>
-    <b>Noch nicht geprüft:</b> Nordpfeil, Maßketten, Raumbezeichnungen, Legende, Abgleich mehrerer Pläne, Normen.
+    <b>Geplant für Grundrisse:</b> Raumflächen, Höhenangaben, Raumbezeichnungen, Schnittlinien, Nordpfeil, Bemaßung.<br>
+    <b>Noch nicht geprüft:</b> Maße und Vorschriften (Türbreiten, Fluchtwege), Rechenwerte, Abgleich mehrerer Pläne.
   </div>
-  <footer>Planprüfer · Prototyp, Stufe 1. Die Prüfung findet fehlende Angaben, sie ersetzt keine Prüfung durch Fachpersonen.</footer>
+  <footer>Planprüfer · Prototyp. Die Prüfung findet fehlende Angaben, sie ersetzt keine Prüfung durch Fachpersonen.</footer>
 </div>
 
 <script>
@@ -141,6 +141,16 @@
     karte.append(kopf, liste);
 
     const items = [];
+    const keinePruefungen = !daten.aktiv || daten.aktiv.length === 0;
+    if (keinePruefungen && daten.befunde.length === 0) {
+      const li = el('li');
+      li.append(el('span', 'dot done'), el('div', 'wert', 'Das PDF wurde gelesen, aber in dieser Version sind noch keine Prüfpunkte aktiv.'));
+      liste.append(li);
+    } else if (daten.aktiv && daten.aktiv.length > 0) {
+      const li = el('li');
+      li.append(el('span', 'dot done'), el('div', 'wert', 'Aktive Prüfpunkte: ' + daten.aktiv.join(', ')));
+      liste.append(li);
+    }
     for (const b of daten.befunde) {
       const li = el('li');
       const dot = el('span', 'dot ' + (b.ok ? 'ok' : 'bad'));
@@ -169,7 +179,8 @@
         it.dot.className = 'dot ' + (it.cb.checked ? 'done' : 'bad');
         if (!it.cb.checked) offen++;
       }
-      if (items.length === 0) { badge.className = 'badge ok'; badge.textContent = 'Alle Angaben vorhanden'; }
+      if (keinePruefungen && daten.befunde.length === 0) { badge.className = 'badge wait'; badge.textContent = 'Keine Prüfpunkte aktiv'; }
+      else if (items.length === 0) { badge.className = 'badge ok'; badge.textContent = 'Keine Befunde'; }
       else if (offen === 0) { badge.className = 'badge ok'; badge.textContent = 'Alles korrigiert – bitte neu hochladen'; }
       else { badge.className = 'badge bad'; badge.textContent = offen + (offen === 1 ? ' Angabe fehlt' : ' Angaben fehlen'); }
     }

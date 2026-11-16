@@ -34,7 +34,7 @@ Leitregel: Jeden Tag muss etwas Lauffähiges stehen. Lieber eine kleine Version,
 
 - [x] Web-App-Grundgerüst aufsetzen, die sich im Browser öffnen lässt (schon am Montag, Start per `Planpruefer-starten.cmd`)
 - [x] Seite zum Hochladen von PDF-Dateien
-- [x] Befundliste, schon mit echten Ergebnissen der Plankopf-Prüfung statt Beispieltexten
+- [x] Befundliste (der Testlauf mit der Plankopf-Prüfung liegt jetzt im Archiv, siehe `archiv/plankopf/`)
 - [ ] Aussehen festlegen: Farben, Schrift, Logo, Name "Planprüfer" (erste Fassung steht, Feinschliff offen)
 - [x] Ampelfarben für die Befunde (grün = vorhanden, rot = fehlt, grau = korrigiert)
 
@@ -46,11 +46,10 @@ Leitregel: Jeden Tag muss etwas Lauffähiges stehen. Lieber eine kleine Version,
 
 **Ziel:** Echte Daten von außen.
 
-- [ ] Hochgeladene PDFs wirklich einlesen (Text und Zahlen auslesen)
-- [ ] Prüfliste der Hochschule (Abgabekriterien) in eine maschinenlesbare Form bringen
-- [ ] Ausgewählte Regeln aus der Bauordnung und den Normen erfassen (zum Beispiel Mindestbreiten von Türen und Fluren)
-- [ ] Erste feste Regeln umsetzen: Plankopf-Angaben vorhanden? Projektname, Projektort (Straße, Ort, PLZ), Bauherr, Maßstab, Datum, Planer, Planbezeichnung, Plannummer?
-- [ ] KI anbinden für alles, was Verständnis braucht (zum Beispiel: Ist ein Nordpfeil im Plan?)
+- [x] Hochgeladene PDFs wirklich einlesen (Text samt Position, gemeinsamer PDF-Leser in `pruefung/pdf-text.ps1`)
+- [ ] Prüfliste der Hochschule (Abgabekriterien) in `unterlagen/` ablegen und die Kriterien für Grundrisse herausfiltern
+- [ ] Prüfpunkte der Gruppe A nacheinander bauen, jeweils mit Test (Reihenfolge in [PRUEFKATALOG.md](PRUEFKATALOG.md)): Raumflächen, Höhenangaben, Raumbezeichnungen, Schnittlinien, Nordpfeil, Flächenplausibilität, Bemaßung
+- [ ] KI (Google Gemini, kostenlos) als austauschbaren Baustein anbinden, zuerst für den Nordpfeil
 - [ ] Befundliste mit echten Ergebnissen füllen, Befunde lassen sich abhaken
 
 **Fertig, wenn:** Ein echter Beispielplan wird geprüft und liefert echte Befunde.
@@ -94,19 +93,15 @@ Wir starten mit der kleinsten sinnvollen Version und bauen in Stufen aus. Jede S
 
 | Stufe | Was wird geprüft | Technik |
 |-------|------------------|---------|
-| 1 (Start) | **Ein Grundriss**, nur **Plankopf**. Geprüft wird, ob diese Angaben vorhanden sind: Projektname, Projektort (Straße, Ort und Postleitzahl), Bauherr, Maßstab, Datum, Planer, Planbezeichnung, Plannummer. Ergebnis als abhakbare Befundliste. | feste Regeln |
-| 2 | Pflichtbestandteile im Plan: Nordpfeil, Maßketten, Raumbezeichnungen, Legende | feste Regeln + KI |
-| 3 | Mehrere Pläne (Plansatz): Angaben über alle Pläne abgleichen, vorhandene Planarten | feste Regeln |
-| 4 | Normen und Bauordnung (Türen, Flure, Fluchtwege), Rechenwerte | feste Regeln + KI |
-| 5 | Markierungen direkt im Plan | |
+| 0 (erledigt) | Testlauf: Plankopf-Angaben. Er hat gezeigt, wie das Auslesen funktioniert, und ist jetzt im Archiv (`archiv/plankopf/`), weil Planköpfe zu individuell sind | feste Regeln |
+| 1 (Start) | **Gruppe A, nur Grundrisse:** Raumflächen, Höhenangaben, Raumbezeichnungen, Schnittlinien, Nordpfeil (nur vorhanden), Flächenplausibilität, Bemaßung. Ergebnis als abhakbare Befundliste | feste Regeln + KI (Gemini, kostenlos) |
+| 2 | Markierungen direkt im Plan an der Stelle des Befunds | |
+| 3 | **Gruppe B und C:** Maße und Vorschriften (Türen, Flure, Fluchtwege), Rechenwerte. Dafür eventuell IFC statt PDF | feste Regeln + KI |
+| 4 | **Gruppe D:** Mehrere Pläne (Plansatz) abgleichen, Vollständigkeit des Plansatzes, Hochschulkriterien | feste Regeln |
 
-**Begriffe im Plankopf** (wichtig, weil sie leicht verwechselt werden):
-- **Planbezeichnung:** der Name des Plans zum Einreichen des Bauantrags, zum Beispiel `03_Grundriss_EG_20260331_V1`.
-- **Plannummer:** die laufende Nummer des Plans. Sie kommt in zwei Schreibweisen vor: als Geschossnummer wie `G01` (Erdgeschoss), `G02` (1. Obergeschoss) usw., oder als einfache Zahl wie `2`. Beide Schreibweisen zählen als vorhanden.
-- Dieselbe Angabe heißt in den Plankopf-Layouts unterschiedlich (zum Beispiel Bauherr/-in, Bauherr, AUFTRAGGEBER; Baumaßnahme, Projekt, BAUVORHABEN; Planer, Planverfasser, Planersteller). Das Tool nutzt eine Synonymliste.
-- Der **Nordpfeil** ist eine Zeichnung und im Text nicht erkennbar. Er wird erst in Stufe 2 geprüft.
+Alle Prüfpunkte und ihre Details stehen in [PRUEFKATALOG.md](PRUEFKATALOG.md).
 
-Testplan: Die Beispielpläne liegen im Ordner `testplaene/` (nicht im Git, siehe dort die LIESMICH.md). Für jede Stufe testen wir mit einem sauberen Plan und einem Plan mit absichtlich eingebauten Fehlern.
+Testplan: Die Beispielpläne liegen im Ordner `testplaene/` (nicht im Git, siehe dort die LIESMICH.md). Für jeden Prüfpunkt testen wir mit einem sauberen Plan und einem Plan mit absichtlich eingebautem Fehler.
 
 ## Abspecken, falls es eng wird
 
@@ -114,7 +109,7 @@ Der Umfang "ganzer Plansatz mit Markierungen im Plan" ist groß. Wenn am Mittwoc
 
 1. **Markierungen im Plan** entfallen, es bleibt die abhakbare Befundliste.
 2. **Abgleich über mehrere Pläne** entfällt, es wird ein Plan nach dem anderen geprüft.
-3. **Weniger Prüfregeln**: Nur Plankopf und eine Handvoll Normen (Türen, Flure), dafür sauber.
+3. **Weniger Prüfregeln**: Nur die einfachen Prüfpunkte der Gruppe A (Raumflächen, Höhenangaben, Raumbezeichnungen), dafür sauber. Die Bemaßung ist am schwierigsten und kommt zuletzt.
 
 ## Risiken
 
