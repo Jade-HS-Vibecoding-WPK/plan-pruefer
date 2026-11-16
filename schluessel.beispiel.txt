@@ -1,0 +1,16 @@
+# Vorlage für den KI-Schlüssel.
+#
+# So geht es:
+#   1. Diese Datei kopieren und die Kopie "schluessel.txt" nennen (im selben Ordner).
+#   2. In schluessel.txt die Zeile unten durch euren Schlüssel ersetzen.
+#   3. Die App neu starten (Fenster schließen, Planpruefer-starten.cmd doppelklicken).
+#
+# schluessel.txt wird NIE auf GitHub hochgeladen (steht in der .gitignore).
+# Gebt den Schlüssel nicht weiter und schickt ihn niemandem im Chat oder per Mail.
+#
+# Zeilen mit # am Anfang werden ignoriert.
+
+HIER-DEN-SCHLUESSEL-EINFUEGEN
+
+# Optional: ein anderes Modell wählen (Standard: gemini-3.5-flash-lite). Das Zeichen # vorne entfernen:
+# modell=gemini-3.5-flash-lite

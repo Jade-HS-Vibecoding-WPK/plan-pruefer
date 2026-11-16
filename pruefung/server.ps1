@@ -46,6 +46,10 @@ try {
                 $html = [System.IO.File]::ReadAllBytes((Join-Path $webOrdner 'index.html'))
                 Send-Bytes $ctx $html 'text/html; charset=utf-8'
             }
+            elseif ($req.HttpMethod -eq 'GET' -and $path -eq '/status') {
+                # Sagt der Seite, ob die KI-Prüfung eingerichtet ist (der Schlüssel selbst wird nie gesendet)
+                Send-Json $ctx @{ ki = (Test-KiVerfuegbar); modell = (Get-KiModell) }
+            }
             elseif ($req.HttpMethod -eq 'POST' -and $path -eq '/pruefen') {
                 $name = [System.Uri]::UnescapeDataString([string]$req.Headers['X-Dateiname'])
                 if (-not $name) { $name = 'plan.pdf' }
@@ -68,12 +72,14 @@ try {
                         Send-Json $ctx @{ fehler = 'Das ist keine PDF-Datei.' } 400
                         continue
                     }
-                    $res = @(Invoke-Pruefungen $tmp $phase)
+                    $mitKi = ([string]$req.Headers['X-Ki']).ToLowerInvariant() -eq 'ja'
+                    $res = @(Invoke-Pruefungen $tmp $phase $mitKi)
+                    $meldungen = @(Get-Meldungen)
                     $befunde = @($res | ForEach-Object {
-                            @{ angabe = $_.Angabe; ok = [bool]$_.Ok; wert = [string]$_.Wert; hinweis = [string]$_.Detail }
+                            @{ angabe = $_.Angabe; ok = [bool]$_.Ok; wert = [string]$_.Wert; hinweis = [string]$_.Detail; punkt = [string]$_.Punkt; quelle = [string]$_.Quelle; x = $_.X; y = $_.Y }
                         })
-                    Write-Host ("{0}  {1} ({2})  ->  {3} Befund(e)" -f (Get-Date -Format 'HH:mm:ss'), $name, $phase, @($res | Where-Object { -not $_.Ok }).Count)
-                    Send-Json $ctx @{ datei = $name; phase = $phase; befunde = $befunde; aktiv = @(Get-AktivePruefungen $phase) }
+                    Write-Host ("{0}  {1} ({2}{3})  ->  {4} Befund(e)" -f (Get-Date -Format 'HH:mm:ss'), $name, $phase, $(if ($mitKi) { ', mit KI' } else { '' }), @($res | Where-Object { -not $_.Ok }).Count)
+                    Send-Json $ctx @{ datei = $name; phase = $phase; mitKi = $mitKi; befunde = $befunde; aktiv = @(Get-AktivePruefungen $phase $mitKi); meldungen = $meldungen }
                 } finally {
                     if (Test-Path $tmp) { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
                 }

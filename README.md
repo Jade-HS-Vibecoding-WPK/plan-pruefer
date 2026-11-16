@@ -40,6 +40,20 @@ Die Prüfpunkte wachsen Schritt für Schritt. Die Einzelheiten stehen in [PRUEFK
 
 Doppelklick auf `Planpruefer-starten.cmd`. Das Fenster offen lassen, der Browser öffnet `http://localhost:8080`.
 
+## KI-Prüfung einrichten (optional)
+
+Manche Prüfungen, zum Beispiel "Raum ohne Name und Fläche", macht eine KI (Google Gemini). Sie ist standardmäßig **aus** und muss bei jedem Upload ausdrücklich eingeschaltet werden.
+
+1. Auf [Google AI Studio](https://aistudio.google.com/apikey) mit einem Google-Konto einen kostenlosen API-Schlüssel erstellen.
+2. Die Datei `schluessel.beispiel.txt` kopieren, die Kopie `schluessel.txt` nennen und den Schlüssel einfügen.
+3. App neu starten. Auf der Seite ist die KI-Option dann wählbar.
+
+Wichtig:
+- `schluessel.txt` wird nie auf GitHub hochgeladen. Den Schlüssel nicht weitergeben.
+- Bei eingeschalteter KI wird der Plan an Google gesendet. Im kostenlosen Zugang darf Google die Eingaben zur Verbesserung seiner Produkte nutzen. Deshalb nur eigene, unkritische Pläne verwenden.
+- KI-Funde sind **Hinweise** und müssen von einem Menschen geprüft werden.
+- Der kostenlose Zugang hat Mengenlimits. Ist das Limit erreicht, zeigt die App eine Meldung, und die normalen Prüfungen laufen weiter.
+
 ## Ordner
 
 | Ordner / Datei | Inhalt |

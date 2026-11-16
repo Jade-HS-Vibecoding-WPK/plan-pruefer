@@ -81,6 +81,15 @@ Jeder Punkt wird einzeln gebaut, getestet und committet. Dazu brauchen wir pro P
 - Hochschul-Dokumente (Entwurfszeichnungen, Werkplanungen) in den Ordner `unterlagen/` legen. Daraus wird gefiltert, welche Kriterien für Grundrisse in Stufe 1 gelten.
 - Testpläne je Prüfpunkt besorgen (sauber und mit Fehler) und in `testplaene/entwurf/` bzw. `testplaene/werk/` ablegen, Benennung siehe `testplaene/LIESMICH.md`. Die alten Plankopf-Testpläne in `archiv/testplaene/` zählen dafür nicht.
 
+## Stand der Umsetzung
+
+| Nr. | Prüfpunkt | Stand |
+|-----|-----------|-------|
+| A4 | Raumflächen | **gebaut** (Entwurf und Werk, Grundversion: Fläche je Raumstempel). Werk-Zusatz (Umfang, Raumhöhe, Bodenbelag) fehlt noch |
+| A3 | Raumbezeichnungen | **gebaut** (Entwurf und Werk). Grenze: Ein Raum ohne Name **und** ohne Fläche steht nicht im PDF-Text und wird nicht gefunden (dafür bräuchte es Geometrie oder KI) |
+| A3K | Raum ohne Name und Fläche (KI) | **gebaut, aber noch nicht mit der echten KI getestet** (es fehlt der Schlüssel und ein Testplan). Läuft nur, wenn die Nutzerin die KI einschaltet, Ergebnis ist ein Hinweis zur Prüfung durch Menschen |
+| A1, A2, A5 bis A11 | | noch nicht gebaut |
+
 ## Entschieden
 
 - Der **Nordpfeil** muss nur vorhanden sein, die Richtung wird nicht geprüft.

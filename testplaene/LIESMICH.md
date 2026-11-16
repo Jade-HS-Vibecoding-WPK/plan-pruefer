@@ -14,12 +14,20 @@ Die alten Testpläne der Plankopf-Prüfung liegen im Archiv (`archiv/testplaene/
 
 ## Benennung
 
-`<prüfpunkt>_<ok|fehler>_<kurzbeschreibung>.pdf`, zum Beispiel:
+`<nr>_<prüfpunkt>_<ok|fehler>.pdf` (der Testlauf liest die Erwartung aus dem Namen), zum Beispiel:
 
-- `A4_ok_einfamilienhaus.pdf` – alle Raumflächen vorhanden, es darf kein Befund kommen
-- `A4_fehler_flaeche-fehlt-flur.pdf` – beim Raum "Flur" fehlt die Fläche, genau dieser Befund muss kommen
+- `01_A_ok.pdf` – sauberer Plan, **kein** Prüfpunkt darf einen Befund melden
+- `01_A4_fehler.pdf` – Plan mit Fehler bei A4 (Raumflächen): A4 muss einen Befund melden, alle anderen Prüfpunkte müssen ruhig bleiben
 
-Ein Plan ohne Zusatz (`ok_gesamt`) darf für **alle** Prüfpunkte keinen Befund auslösen.
+Zusätze nach `ok` oder `fehler` sind erlaubt (zum Beispiel `02_A4_fehler_flur.pdf`).
+
+## Testlauf
+
+Aus dem Projektordner:
+
+    powershell -File pruefung\testlauf.ps1
+
+Der Testlauf prüft alle Pläne in `entwurf/` und `werk/`, meldet pro Plan "richtig" oder "FALSCH" und überspringt Pläne, deren Prüfpunkt noch nicht gebaut ist.
 
 ## Prüfpunkte
 
@@ -45,4 +53,11 @@ Zu jedem Plan mit Fehler notieren wir, welcher Fehler eingebaut ist. Die Spalte 
 
 | Datei | Phase | Eingebauter Fehler | Gefunden? |
 |-------|-------|--------------------|-----------|
-| | | | |
+| entwurf/01_A4_fehler.pdf | Entwurf | Bei allen Räumen fehlt die Flächenangabe im Raumstempel | ja, alle 9 Räume |
+| entwurf/01_A4_fehler.pdf | Entwurf | **Zusätzlich fehlt versehentlich die Höhenangabe ±0,00** neben dem Flur. Das gilt als bekannter Zusatzfehler und zugleich als Fehlerfall für A7 (Höhenangaben). Im Testlauf zählt A7 dort nicht als falscher Alarm. | noch nicht (A7 ungebaut) |
+
+| entwurf/03_A3_fehler.pdf | Entwurf | Bei allen Räumen fehlt der Raumname, die Flächen stehen noch da | ja, alle 9 Flächen ohne Namen |
+
+**Noch gebraucht für A3K (Raum ohne Name und Fläche, KI):** ein Plan `04_A3K_fehler.pdf`, bei dem bei **einem** Raum der komplette Raumstempel (Name und Fläche) gelöscht ist, sonst alles in Ordnung. Dieser Plan wird im Testlauf übersprungen, weil er die echte KI bräuchte. Er wird von Hand in der App mit eingeschalteter KI geprüft.
+
+Hinweis zur Fläche im Raumstempel: Es zählt die Zahl mit Quadratmeter-Einheit (zum Beispiel `22,50 m²`). Ob davor `NGF:` steht, ist egal.

@@ -31,6 +31,13 @@
   .phase input { accent-color: var(--accent); margin-right: 8px; }
   .phase b { display: inline; }
   .phase span { color: var(--muted); font-size: 14px; margin-left: 24px; display: block; }
+  .ki { background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; }
+  .ki label { cursor: pointer; display: block; }
+  .ki input { accent-color: var(--accent); margin-right: 8px; }
+  .ki small { display: block; color: var(--muted); margin-left: 24px; font-size: 14px; }
+  .ki.aus { opacity: .6; } .ki.aus label { cursor: not-allowed; }
+  .kitag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); margin-left: 8px; vertical-align: 2px; }
+  .meldung { margin: 0; padding: 12px 20px; background: var(--warn-bg); color: var(--warn); font-size: 14px; border-top: 1px solid var(--line); }
   .drop.gesperrt { opacity: .5; cursor: not-allowed; }
   .phasen-tag { font-size: 12px; color: var(--muted); font-weight: 600; }
   @media (max-width: 520px) { fieldset.phase { grid-template-columns: 1fr; } }
@@ -77,12 +84,18 @@
     <label><input type="radio" name="phase" value="werk" autocomplete="off"><b>Werkplanung</b><span>Checkliste Werkplanung, Grundrisse M 1:50</span></label>
   </fieldset>
 
+  <div class="ki" id="kiBox">
+    <label><input type="checkbox" id="kiAn" autocomplete="off"><b>Zusätzlich mit KI prüfen (Google Gemini)</b>
+      <small id="kiText">Findet zum Beispiel Räume, bei denen Name und Fläche fehlen. Dafür wird der Plan an Google gesendet. Bitte nur eigene, unkritische Pläne verwenden. KI-Funde sind Hinweise und müssen geprüft werden.</small>
+    </label>
+  </div>
+
   <label class="drop gesperrt" id="drop">
     <input type="file" id="datei" accept="application/pdf,.pdf" multiple>
     <strong id="dropTitel">2. PDF hierher ziehen oder klicken</strong>
     <span>ArchiCAD-Export mit auslesbarem Text. Es können mehrere Dateien gleichzeitig geprüft werden.</span>
   </label>
-  <div class="hinweis">Die Datei wird nur auf diesem Rechner geprüft und nicht ins Internet gesendet.</div>
+  <div class="hinweis">Ohne KI-Prüfung bleibt die Datei auf diesem Rechner und wird nicht ins Internet gesendet. Mit eingeschalteter KI-Prüfung wird sie an Google Gemini gesendet.</div>
 
   <div id="ergebnisse"></div>
 
@@ -108,6 +121,16 @@
     input.disabled = !frei;
     dropTitel.textContent = frei ? '2. PDF hierher ziehen oder klicken' : '2. PDF hochladen (erst die Planungsphase wählen)';
   }
+  // KI-Prüfung: ist standardmäßig aus und nur wählbar, wenn ein Schlüssel eingerichtet ist.
+  const kiAn = document.getElementById('kiAn'), kiBox = document.getElementById('kiBox'), kiText = document.getElementById('kiText');
+  kiAn.checked = false;
+  fetch('/status').then(r => r.json()).then(s => {
+    if (!s.ki) {
+      kiAn.disabled = true; kiBox.classList.add('aus');
+      kiText.textContent = 'Noch nicht eingerichtet: Es ist kein KI-Schlüssel hinterlegt (siehe README, Abschnitt „KI-Prüfung einrichten“).';
+    }
+  }).catch(() => { });
+
   // Die Phase wird bewusst nicht gemerkt: bei jedem Besuch (und Neuladen) wird neu gefragt.
   radios.forEach(r => { r.checked = false; r.addEventListener('change', aktualisiereSperre); });
   aktualisiereSperre();
@@ -136,7 +159,7 @@
       if (!/\.pdf$/i.test(f.name)) { zeigeFehler(`„${f.name}“ ist keine PDF-Datei.`); continue; }
       const karte = neueKarte(f.name);
       try {
-        const r = await fetch('/pruefen', { method: 'POST', headers: { 'X-Dateiname': encodeURIComponent(f.name), 'X-Phase': phase }, body: f });
+        const r = await fetch('/pruefen', { method: 'POST', headers: { 'X-Dateiname': encodeURIComponent(f.name), 'X-Phase': phase, 'X-Ki': (kiAn.checked ? 'ja' : 'nein') }, body: f });
         const daten = await r.json();
         if (!r.ok) throw new Error(daten.fehler || 'Unbekannter Fehler');
         zeigeErgebnis(karte, daten);
@@ -193,7 +216,9 @@
       const li = el('li');
       const dot = el('span', 'dot ' + (b.ok ? 'ok' : 'bad'));
       const inhalt = el('div');
-      inhalt.append(el('div', 'angabe', b.angabe));
+      const kopfzeile = el('div', 'angabe', b.angabe);
+      if (b.quelle === 'ki') kopfzeile.append(el('span', 'kitag', 'KI-Hinweis'));
+      inhalt.append(kopfzeile);
       if (b.ok) {
         inhalt.append(el('div', 'wert', b.wert));
       } else {
@@ -209,6 +234,8 @@
       li.append(dot, inhalt);
       liste.append(li);
     }
+
+    for (const m of (daten.meldungen || [])) karte.append(el('p', 'meldung', m));
 
     function aktualisiere() {
       let offen = 0;
