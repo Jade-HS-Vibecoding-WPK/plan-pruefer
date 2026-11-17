@@ -156,39 +156,63 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A1' }).Count -
     if (-not $r.Ok) { $richtig++; $zeilen.Add("[richtig]      'NGF:', 'Nord' und kleines 'n' zählen nicht als Nordpfeil") } else { $falsch++; $zeilen.Add("[FALSCH]       Wörter wurden als Nordpfeil gezählt") }
 }
 
-# Selbsttest A6: Schnittlinien (Buchstabe an beiden Enden)
+# Selbsttest A6: Schnittlinien (Dreiecke aus der PDF-Geometrie, Buchstaben aus dem Text)
 if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A6' }).Count -gt 0) {
     $zeilen.Add("")
     $zeilen.Add("== Selbsttest A6: Schnittlinien")
     $itemsA6 = @(Get-PdfTextItems $okPlan.FullName)
-    $r = @(Get-A6Schnittlinien $itemsA6)
-    if (@($r | Where-Object { $_.Ok -and $_.Angabe -eq 'Schnitt A' }).Count -eq 1 -and @($r | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Musterplan: Schnitt A an beiden Enden erkannt, keine Befunde") }
+    $dreieckeA6 = @(Get-PdfDreiecke $okPlan.FullName)
+    $grosse = @($dreieckeA6 | Where-Object { $_.Kante -ge 8 } | Sort-Object { $_.Mitte.Y })
+
+    if ($grosse.Count -eq 2 -and $grosse[0].Richtung -eq 'links' -and $grosse[1].Richtung -eq 'links' -and [math]::Abs($grosse[0].Mitte.Y - 110.6) -lt 2 -and [math]::Abs($grosse[1].Mitte.Y - 513.6) -lt 2) { $richtig++; $zeilen.Add("[richtig]      Musterplan: zwei Schnitt-Dreiecke bei den Buchstaben A, beide zeigen nach links") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Dreiecke im Musterplan: $(($grosse | ForEach-Object { "($([math]::Round($_.Mitte.X)),$([math]::Round($_.Mitte.Y))) $($_.Richtung)" }) -join '; ')") }
+
+    $r = @(Get-A6Pruefung $itemsA6 $dreieckeA6)
+    if (@($r | Where-Object { $_.Ok -and $_.Angabe -eq 'Schnitt A' }).Count -eq 1 -and @($r | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Musterplan: Schnitt A in Ordnung, keine Befunde") }
     else { $falsch++; $zeilen.Add("[FALSCH]       Musterplan: $(($r | ForEach-Object { "$($_.Angabe)=$($_.Ok)" }) -join ', ')") }
+
+    if ($grosse.Count -eq 2) {
+        $r = @(Get-A6Pruefung $itemsA6 @($dreieckeA6 | Where-Object { $_ -ne $grosse[1] }) | Where-Object { -not $_.Ok })
+        if ($r.Count -eq 1 -and $r[0].Detail -match 'fehlt an einem Ende das Dreieck') { $richtig++; $zeilen.Add("[richtig]      fehlt ein Dreieck: 'an einem Ende fehlt das Dreieck'") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       ein Dreieck entfernt: $($r.Count) Befunde ($(($r | ForEach-Object { $_.Detail }) -join ' | '))") }
+
+        $r = @(Get-A6Pruefung $itemsA6 @($dreieckeA6 | Where-Object { $_ -ne $grosse[0] -and $_ -ne $grosse[1] }) | Where-Object { -not $_.Ok })
+        if ($r.Count -eq 1 -and $r[0].Detail -match 'fehlt an beiden Enden das Dreieck') { $richtig++; $zeilen.Add("[richtig]      fehlen beide Dreiecke (Buchstaben bleiben): 'an beiden Enden fehlt das Dreieck'") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       beide Dreiecke entfernt: $($r.Count) Befunde ($(($r | ForEach-Object { $_.Detail }) -join ' | '))") }
+
+        $gedreht = [pscustomobject]@{ P1 = $grosse[1].P1; P2 = $grosse[1].P2; P3 = $grosse[1].P3; Mitte = $grosse[1].Mitte; Kante = $grosse[1].Kante; Richtung = 'rechts' }
+        $r = @(Get-A6Pruefung $itemsA6 @(@($dreieckeA6 | Where-Object { $_ -ne $grosse[1] }) + $gedreht) | Where-Object { -not $_.Ok })
+        if ($r.Count -eq 1 -and $r[0].Detail -match 'unterschiedliche Richtungen \(links und rechts\)') { $richtig++; $zeilen.Add("[richtig]      Dreiecke in verschiedene Richtungen: wird gemeldet") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       Richtung gedreht: $($r.Count) Befunde ($(($r | ForEach-Object { $_.Detail }) -join ' | '))") }
+    }
+
+    $ohneBuchstaben = @($itemsA6 | Where-Object { $_.T -cne 'A' })
+    $r = @(Get-A6Pruefung $ohneBuchstaben $dreieckeA6)
+    if (@($r | Where-Object { -not $_.Ok }).Count -eq 0 -and @($r | Where-Object { $_.Ok -and $_.Wert -match 'ohne Buchstaben' }).Count -eq 1) { $richtig++; $zeilen.Add("[richtig]      Schnittlinie ohne Buchstaben (nur Dreiecke) ist in Ordnung") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       ohne Buchstaben: $(($r | ForEach-Object { "$($_.Angabe)=$($_.Ok) $($_.Detail)" }) -join ' | ')") }
 
     $enden = @($itemsA6 | Where-Object { $_.T -ceq 'A' } | Sort-Object Y)
     if ($enden.Count -eq 2) {
-        $einEnde = @($itemsA6 | Where-Object { $_ -ne $enden[1] })
-        $r = @(Get-A6Schnittlinien $einEnde | Where-Object { -not $_.Ok })
-        if ($r.Count -eq 1 -and $r[0].Angabe -eq 'Schnitt A') { $richtig++; $zeilen.Add("[richtig]      fehlt ein Ende, wird 'Schnitt A nur an einem Ende' gemeldet") }
-        else { $falsch++; $zeilen.Add("[FALSCH]       ein Ende entfernt: $($r.Count) Befunde ($(($r | ForEach-Object { $_.Angabe }) -join ', '))") }
-
-        $keiner = @($itemsA6 | Where-Object { $_ -ne $enden[0] -and $_ -ne $enden[1] })
-        $r = @(Get-A6Schnittlinien $keiner | Where-Object { -not $_.Ok })
-        if ($r.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Schnittlinie ohne Buchstaben ist in Ordnung (kein Befund)") }
-        else { $falsch++; $zeilen.Add("[FALSCH]       beide Enden entfernt: $($r.Count) Befunde ($(($r | ForEach-Object { $_.Angabe }) -join ', '))") }
+        $r = @(Get-A6Pruefung @($itemsA6 | Where-Object { $_ -ne $enden[1] }) $dreieckeA6 | Where-Object { -not $_.Ok })
+        if ($r.Count -eq 1 -and $r[0].Detail -match 'nur an einem Ende beschriftet') { $richtig++; $zeilen.Add("[richtig]      nur ein Buchstabe bei beiden Dreiecken: 'nur an einem Ende beschriftet'") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       ein Buchstabe entfernt: $($r.Count) Befunde ($(($r | ForEach-Object { $_.Detail }) -join ' | '))") }
     }
 
-    # Ein einzelnes N (Nordpfeil) ist kein Schnitt; zwei gleiche Buchstaben dicht beieinander sind kein Schnitt
+    $r = @(Get-A6Pruefung $ohneBuchstaben @() | Where-Object { -not $_.Ok })
     $nurN = @([pscustomobject]@{ X = 1000; Y = 60; T = 'N' })
-    $r = @(Get-A6Schnittlinien $nurN | Where-Object { -not $_.Ok })
-    $dicht = @([pscustomobject]@{ X = 100; Y = 100; T = 'B' }, [pscustomobject]@{ X = 100; Y = 150; T = 'B' })
-    $r2 = @(Get-A6Schnittlinien $dicht | Where-Object { -not $_.Ok })
-    $waagrecht = @([pscustomobject]@{ X = 100; Y = 300; T = 'C' }, [pscustomobject]@{ X = 600; Y = 303; T = 'C' })
-    $r3 = @(Get-A6Schnittlinien $waagrecht)
-    if ($r.Count -eq 0 -and $r2.Count -eq 2 -and @($r3 | Where-Object { $_.Ok }).Count -eq 1 -and @($r3 | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      N ist kein Schnitt, dichte Buchstaben sind kein Paar, waagerechte Schnitte werden erkannt") }
-    else { $falsch++; $zeilen.Add("[FALSCH]       Sonderfälle: nurN=$($r.Count), dicht=$($r2.Count), waagrecht ok=$(@($r3 | Where-Object { $_.Ok }).Count)") }
-}
+    $r2 = @(Get-A6Pruefung $nurN @() | Where-Object { -not $_.Ok })
+    $kleine = @($dreieckeA6 | Where-Object { $_.Kante -lt 8 })
+    $r3 = @(Get-A6Pruefung @() $kleine | Where-Object { -not $_.Ok })
+    if ($r.Count -eq 1 -and $r[0].Angabe -eq 'Schnittlinie' -and $r2.Count -eq 1 -and $r2[0].Angabe -eq 'Schnittlinie' -and $r3.Count -eq 1 -and $r3[0].Angabe -eq 'Schnittlinie') { $richtig++; $zeilen.Add("[richtig]      ohne Dreiecke und Buchstaben, nur N, nur kleine Dreiecke: 'keine Schnittlinie gefunden'") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Keine-Schnittlinie-Fälle: $($r.Count), $($r2.Count), $($r3.Count)") }
 
+    $dicht = @([pscustomobject]@{ X = 100; Y = 100; T = 'B' }, [pscustomobject]@{ X = 100; Y = 150; T = 'B' })
+    $r4 = @(Get-A6Pruefung $dicht @() | Where-Object { -not $_.Ok })
+    $waagrecht = @([pscustomobject]@{ X = 100; Y = 300; T = 'C' }, [pscustomobject]@{ X = 600; Y = 303; T = 'C' })
+    $r5 = @(Get-A6Pruefung $waagrecht @() | Where-Object { -not $_.Ok })
+    if ($r4.Count -eq 2 -and $r5.Count -eq 1 -and $r5[0].Detail -match 'fehlt an beiden Enden das Dreieck') { $richtig++; $zeilen.Add("[richtig]      dichte gleiche Buchstaben sind kein Paar, waagerechte Buchstabenpaare werden erkannt") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Sonderfälle: dicht=$($r4.Count), waagrecht=$($r5.Count)") }
+}
 # Selbsttest A3: Fehlt nur beim Flur der Raumname, muss genau ein Befund (zur Fläche des Flurs) kommen.
 if ($okPlan -and (Get-AktivePruefungen 'entwurf') -contains 'A3 Raumbezeichnungen') {
     $zeilen.Add("")
@@ -214,21 +238,6 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count 
     $e = @(ConvertTo-A7KErgebnisse $antwort7)
     if ($e.Count -eq 1 -and -not $e[0].Ok -and $e[0].Quelle -eq 'ki' -and $e[0].Detail -match 'Stufe' -and $e[0].Detail -match 'rechts unten') { $richtig++; $zeilen.Add("[richtig]      A7K: KI-Antwort wird zu einem KI-Hinweis mit Art und Lage") }
     else { $falsch++; $zeilen.Add("[FALSCH]       A7K: KI-Antwort wurde nicht richtig umgewandelt: $($e | ConvertTo-Json -Compress)") }
-
-    # A6K: Antwort der KI wird richtig umgewandelt
-    $antwort6 = '{"anzahl_schnittlinien":1,"probleme":[{"problem":"dreieck_fehlt","bezeichnung":"A","lage":"senkrecht in der Mitte","x_prozent":35,"y_prozent":50}]}' | ConvertFrom-Json
-    $e = @(ConvertTo-A6KErgebnisse $antwort6)
-    if ($e.Count -eq 1 -and -not $e[0].Ok -and $e[0].Quelle -eq 'ki' -and $e[0].Angabe -match 'Schnitt A' -and $e[0].Detail -match 'senkrecht' -and $e[0].Detail -match 'Dreieck') { $richtig++; $zeilen.Add("[richtig]      A6K: fehlendes Dreieck wird zu einem KI-Hinweis mit Schnittbezeichnung") }
-    else { $falsch++; $zeilen.Add("[FALSCH]       A6K: KI-Antwort wurde nicht richtig umgewandelt: $($e | ConvertTo-Json -Compress)") }
-    $e = @(ConvertTo-A6KErgebnisse ('{"anzahl_schnittlinien":0,"probleme":[]}' | ConvertFrom-Json))
-    if ($e.Count -eq 1 -and $e[0].Angabe -eq 'Schnittlinie' -and $e[0].Detail -match 'keine Schnittlinie') { $richtig++; $zeilen.Add("[richtig]      A6K: keine Schnittlinie im Plan wird gemeldet") }
-    else { $falsch++; $zeilen.Add("[FALSCH]       A6K: 0 Schnittlinien ergab $($e.Count) Befunde") }
-    $e = @(ConvertTo-A6KErgebnisse ('{"anzahl_schnittlinien":2,"probleme":[{"problem":"richtung_unterschiedlich","lage":"waagerecht unten"}]}' | ConvertFrom-Json))
-    if ($e.Count -eq 1 -and $e[0].Detail -match 'unterschiedliche Richtungen') { $richtig++; $zeilen.Add("[richtig]      A6K: unterschiedliche Richtung der Dreiecke wird gemeldet") }
-    else { $falsch++; $zeilen.Add("[FALSCH]       A6K: unterschiedliche Richtung ergab $($e.Count) Befunde") }
-    $e = @(ConvertTo-A6KErgebnisse ('{"anzahl_schnittlinien":1,"probleme":[]}' | ConvertFrom-Json))
-    if ($e.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      A6K: eine Schnittlinie ohne Probleme ergibt keinen Befund") }
-    else { $falsch++; $zeilen.Add("[FALSCH]       A6K: korrekte Schnittlinie ergab $($e.Count) Befunde") }
 
     # Schlüsseldatei lesen (nur Textzeilen, mit erfundenen Werten, kein echter Schlüssel)
     $fakeKey = 'AIzaTESTWERT123'
@@ -269,7 +278,7 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count 
 
     # 4. KI nicht eingeschaltet: es wird keine Anfrage gestellt (Datenschutz)
     $script:TestKiAn = $true; $script:TestKiAufrufe = 0
-    $script:TestKiAntwort = '{"weitere_raeume":[{"lage":"rechts unten"}],"bereiche":[],"anzahl_schnittlinien":1,"probleme":[]}' | ConvertFrom-Json
+    $script:TestKiAntwort = '{"weitere_raeume":[{"lage":"rechts unten"}],"bereiche":[]}' | ConvertFrom-Json
     $res = @(Invoke-Pruefungen $okPlan.FullName 'entwurf' $false)
     if ($script:TestKiAufrufe -eq 0 -and @($res | Where-Object { $_.Quelle -eq 'ki' }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      KI aus: es wird nichts an die KI gesendet") }
     else { $falsch++; $zeilen.Add("[FALSCH]       KI aus, aber Aufrufe=$($script:TestKiAufrufe)") }
@@ -288,7 +297,7 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count 
     $m = @(Get-Meldungen)
     if ($m.Count -eq $anzahlKi -and $m[0] -match 'Struktur') { $richtig++; $zeilen.Add("[richtig]      falsche KI-Struktur: Meldung statt stillem 'keine Funde'") }
     else { $falsch++; $zeilen.Add("[FALSCH]       falsche KI-Struktur: Meldungen=$($m.Count) ($($m -join ' | '))") }
-    $script:TestKiAntwort = '{"weitere_raeume":[{"lage":"rechts unten"}],"bereiche":[],"anzahl_schnittlinien":1,"probleme":[]}' | ConvertFrom-Json
+    $script:TestKiAntwort = '{"weitere_raeume":[{"lage":"rechts unten"}],"bereiche":[]}' | ConvertFrom-Json
 
     # 5c. Antworttext aus der Interactions-Antwort (steps) wird gelesen
     $stepsAntwort = '{"steps":[{"type":"thought","signature":"x"},{"type":"model_output","content":[{"type":"text","text":"{\"raeume\":[]}"}]}]}' | ConvertFrom-Json

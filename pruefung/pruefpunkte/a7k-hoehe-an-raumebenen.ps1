@@ -10,21 +10,34 @@
   - Dass es überhaupt eine Höhenkote im Plan gibt, prüft A7 ohne KI.
 #>
 
-$script:A7K_Frage = @'
-Das Bild zeigt einen Grundriss (ArchiCAD-Export). Du prüfst ihn auf Höhenangaben. Höhenkoten stehen als Zahl mit Vorzeichen im Plan, zum Beispiel ±0,00, +0,15 oder -0,30.
+function Get-A7KFrage($koten) {
+    $liste = if (@($koten).Count -gt 0) { "Laut Text des Plans stehen diese Höhenkoten im Plan: $(@($koten) -join '; ')." } else { 'Laut Text des Plans steht keine Höhenkote im Plan.' }
+    @"
+Das Bild zeigt einen Grundriss (ArchiCAD-Export). Du prüfst ihn auf Höhenangaben. Höhenkoten stehen als Zahl mit Vorzeichen im Plan, zum Beispiel ±0,00, +0,15 oder -0,30. $liste
 
-Suche Bereiche im Plan, in denen die Höhenlage des Fußbodens wechselt: Stufen, Podeste, abgesenkte oder erhöhte Bereiche (zum Beispiel ein Eingang mit Stufe, ein abgesenktes Bad, eine Terrasse unter oder über dem Fußbodenniveau).
+Einen Ebenenwechsel (Stufe, Podest, abgesenkter oder erhöhter Bereich) erkennt man an einer DURCHGEHENDEN LINIE MITTEN IN EINEM RAUM, die den Raum in zwei Bereiche teilt. Es ist keine Wand (keine Schraffur, keine dicke Wandkontur), kein Möbelstück und keine Maßlinie. Jeder der beiden Bereiche beiderseits der Linie braucht eine eigene Höhenkote.
 
-Gib NUR die Bereiche zurück, bei denen die Ebene wechselt UND keine eigene Höhenkote eingezeichnet ist.
+Suche solche Linien im Plan. Gib NUR die Bereiche zurück, an denen die Ebene wechselt UND auf mindestens einer Seite der Linie keine eigene Höhenkote steht.
 
 Regeln:
-- Bereiche, bei denen eine Höhenkote steht, gehören NICHT in die Liste.
+- Linien, bei denen beide Seiten eine Höhenkote haben, gehören NICHT in die Liste.
 - Treppen, die in ein anderes Geschoss führen, gelten nicht als Ebenenwechsel in diesem Plan.
-- Wenn du dir nicht sicher bist, ob die Ebene wechselt, nimm den Bereich NICHT auf.
-- Beschreibe die Lage so, dass eine Person den Bereich im Plan findet (zum Beispiel "rechts unten, Eingang mit zwei Stufen").
-- Gib die ungefähre Mitte als Prozentwerte der Seitenbreite (x, 0 = links) und der Seitenhöhe (y, 0 = oben) an.
+- Wenn du dir nicht sicher bist, ob die Linie einen Ebenenwechsel zeigt, nimm sie NICHT auf.
+- Beschreibe die Lage so, dass eine Person den Bereich im Plan findet (zum Beispiel "oben im Flur, quer zur Eingangstür").
+- Gib die ungefähre Mitte der Linie als Prozentwerte der Seitenbreite (x, 0 = links) und der Seitenhöhe (y, 0 = oben) an.
 - Gibt es keinen solchen Bereich, antworte mit einer leeren Liste.
-'@
+"@
+}
+
+# Höhenkoten aus dem PDF-Text mit ungefährer Lage (Prozent der Seite), als Hilfe für die KI.
+function Get-A7KBekannteKoten($items, $pdfPfad) {
+    $seite = Get-PdfSeitengroesse $pdfPfad
+    foreach ($p in $items) {
+        if ($p.T -match $script:A7_HoehenkoteMitOK -or $p.T -match $script:A7_Hoehenkote) {
+            "$($Matches['h'].Trim()) (ca. $([math]::Round(100 * $p.X / $seite.Breite)) % von links, $([math]::Round(100 * $p.Y / $seite.Hoehe)) % von oben)"
+        }
+    }
+}
 
 $script:A7K_Schema = @{
     type       = 'object'
@@ -64,9 +77,10 @@ function ConvertTo-A7KErgebnisse($antwort) {
     }
 }
 
-function Get-A7KBereiche($pdfPfad, $bildPfad) {
+function Get-A7KBereiche($items, $pdfPfad, $bildPfad) {
     $datei = if ($bildPfad -and (Test-Path $bildPfad)) { $bildPfad } else { $pdfPfad }
-    $antwort = Invoke-KiPdfFrage $datei $script:A7K_Frage $script:A7K_Schema
+    $koten = @(Get-A7KBekannteKoten $items $pdfPfad)
+    $antwort = Invoke-KiPdfFrage $datei (Get-A7KFrage $koten) $script:A7K_Schema
     ConvertTo-A7KErgebnisse $antwort
 }
 
@@ -75,5 +89,5 @@ $script:Pruefungen += @{
     Name   = 'Höhenangabe an Raumebenen (KI)'
     Phasen = @('entwurf', 'werk')
     Ki     = $true
-    Run    = { param($items, $pdfPfad, $bildPfad) Get-A7KBereiche $pdfPfad $bildPfad }
+    Run    = { param($items, $pdfPfad, $bildPfad) Get-A7KBereiche $items $pdfPfad $bildPfad }
 }
