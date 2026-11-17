@@ -49,6 +49,14 @@ Stand: Ende Montag, 16.11.2026 (Tag 1 von 5). Der Zeitplan steht in [PLAN.md](PL
 - **Testlauf:** 36 von 36 richtig, 2 übersprungen (`04_A3K_fehler` braucht die KI, `05_A7K_fehler` gehört zum entfallenen A7K).
 - **Werkplanung:** Reihenfolge und Aufbau des Werkplans stehen in `PRUEFKATALOG.md`, Abschnitt "Werkplanung". Zuerst A4 Werk-Raumstempel, dann A10, A11, A9, **A2 Bemaßung** (in vier Stufen), A8, A5.
 
+## Dienstag Abend: A4W und A10 gebaut
+
+- **A4W Werk-Raumstempel** (nur Werkplanung, ohne KI), `pruefung/pruefpunkte/a4w-werk-raumstempel.ps1`. **Regel vom Team:** Der erweiterte Stempel (Raumnummer, RU, RH, FB, WB, DB) ist von Plan zu Plan verschieden, fehlende Angaben sind **kein Fehler**. Pflicht sind nur Raumname (prüft A3) und Fläche (prüft A4), beide laufen auch im Werkplan. A4W prüft nur Vorhandenes: Raumnummern (doppelt, Lücke in der Reihenfolge, einzelner Raum ohne Nummer, wenn andere eine haben; keine Nummern im Plan = kein Befund) und Raumhöhe RH (2,00 bis 6,00 m).
+- **A10 BRH je Fenster** (nur Werkplanung), `pruefung/pruefpunkte/a10-brh.ps1`: mindestens eine BRH im Plan, jede BRH hat einen Wert (rechts daneben, bei hochkant stehendem Text darüber). Meldung mit Position. Im Musterplan 14 von 14 in Ordnung.
+- Saubere Werkpläne bleiben ruhig, Entwurfs-Prüfungen unverändert. Selbsttests mit im Speicher nachgestellten Fehlern.
+- Testlauf: **57 von 57 richtig**, 2 übersprungen.
+- **Noch offen:** Plausibilität von Fläche und Raumumfang (kommt mit den Maßketten, A2/A5). Ob an **jedem** Fenster eine BRH steht, braucht die Fensterzahl aus der Zeichnung. Echte Fehlerpläne vom Team sind nur Gegenproben (`03_A10_fehler.pdf`).
+- Nächster Schritt: A11 Planinhalt, dann A9 Achsen, A2 Bemaßung, A8, A5.
 ## Eure Aufgaben für morgen
 
 1. **Server neu starten**, damit alles Neue gilt: das schwarze Server-Fenster schließen und `Planpruefer-starten.cmd` doppelklicken. (Der Server läuft zurzeit noch mit altem Stand.)

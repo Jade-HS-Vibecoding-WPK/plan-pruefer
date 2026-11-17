@@ -237,6 +237,128 @@ if ($okPlan -and (Get-AktivePruefungen 'entwurf') -contains 'A3 Raumbezeichnunge
     }
 }
 
+# Selbsttest A4W: Werk-Raumstempel (Fehler werden im Speicher nachgestellt: Textstücke aus dem sauberen Werkplan ändern)
+# Regel vom Team: fehlende erweiterte Angaben (Nummer, RU, RH, FB, WB, DB) sind KEIN Fehler. Geprüft werden nur
+# vorhandene Raumnummern (doppelt, Lücke) und die Raumhöhe. Raumname und Fläche prüfen A3 und A4.
+$werkOk = Get-ChildItem (Join-Path $ordner 'werk') -Filter '*_Werkplanung_ok.pdf' -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($werkOk -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A4W' }).Count -gt 0) {
+    $zeilen.Add("")
+    $zeilen.Add("== Selbsttest A4W: Werk-Raumstempel")
+    $itemsW = @(Get-PdfTextItems $werkOk.FullName)
+    $stempelW = @(Get-A4WRaumstempel $itemsW)
+    $r = @(Get-A4WWerkRaumstempel $itemsW)
+    if ($stempelW.Count -eq 7 -and @($r | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Musterplan: 7 Stempel erkannt (Treppenholm ist kein Raum), keine Befunde") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Musterplan: $($stempelW.Count) Stempel, $(@($r | Where-Object { -not $_.Ok }).Count) Befunde") }
+
+    $buero = $stempelW | Where-Object { $_.NameText -eq 'Büro' } | Select-Object -First 1
+    $flurS = $stempelW | Where-Object { $_.NameText -eq 'Flur' } | Select-Object -First 1
+    if ($buero -and $flurS) {
+        # Fehlende erweiterte Angaben sind kein Fehler: je Feld die Zeile (Beschriftung und Wert) beim Büro entfernen
+        $schlecht = @()
+        foreach ($f in $script:A4wFelder) {
+            $d = $buero.Felder[$f.Label]
+            $b = @(Get-A4WWerkRaumstempel @($itemsW | Where-Object { $_ -ne $d.Wert -and $_ -ne $d.Label }) | Where-Object { -not $_.Ok })
+            if ($b.Count -ne 0) { $schlecht += $f.Label }
+        }
+        if ($schlecht.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      fehlt beim Büro NGF, RU, RH, FB, WB oder DB (je einzeln): kein Befund von A4W") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       Befund trotz fehlender erweiterter Angabe bei: $($schlecht -join ', ')") }
+
+        # Alle erweiterten Angaben von allen Räumen weg (nur Name, Nummer, Fläche bleiben): kein Befund
+        $nurBasis = @($itemsW | Where-Object { $it = $_; -not (@($stempelW | ForEach-Object { foreach ($l in 'RU', 'RH', 'FB', 'WB', 'DB') { $_.Felder[$l].Label; $_.Felder[$l].Wert } }) -contains $it) })
+        $b = @(Get-A4WWerkRaumstempel $nurBasis | Where-Object { -not $_.Ok })
+        if ($b.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Stempel nur mit Name, Nummer und Fläche: kein Befund") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       Basisstempel: $($b.Count) Befunde ($(($b | ForEach-Object { $_.Detail }) -join ' | '))") }
+
+        # Gar keine Raumnummern: kein Befund
+        $ohneNr = @($itemsW | Where-Object { $it = $_; -not (@($stempelW | ForEach-Object { $_.Nummer }) -contains $it) })
+        $b = @(Get-A4WWerkRaumstempel $ohneNr | Where-Object { -not $_.Ok })
+        if ($b.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      keine Raumnummern im Plan: kein Befund") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       ohne Raumnummern: $($b.Count) Befunde ($(($b | ForEach-Object { $_.Detail }) -join ' | '))") }
+
+        # Doppelte Nummer: Büro (02) bekommt die Nummer vom Flur (01) -> beide gemeldet
+        $doppelt = @($itemsW | ForEach-Object { if ($_ -eq $buero.Nummer) { [pscustomobject]@{ X = $_.X; Y = $_.Y; T = $flurS.Nummer.T } } else { $_ } })
+        $b = @(Get-A4WWerkRaumstempel $doppelt | Where-Object { -not $_.Ok })
+        if (@($b | Where-Object { $_.Detail -match 'mehrfach' }).Count -eq 2 -and @($b | Where-Object { $_.Angabe -eq 'Raum Büro' -and $_.Detail -match 'mehrfach' }).Count -eq 1 -and @($b | Where-Object { $_.Detail -match 'lückenlos' }).Count -eq 1) { $richtig++; $zeilen.Add("[richtig]      doppelte Raumnummer: beide Räume gemeldet, dazu die entstandene Lücke") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       doppelte Nummer: $($b.Count) Befunde ($(($b | ForEach-Object { $_.Detail }) -join ' | '))") }
+
+        # Lücke: Nummer 05 (HWR) wird 09 -> Lücke 05 bis 08 ... Befund 'nicht lückenlos'
+        $hwr = $stempelW | Where-Object { $_.NameText -eq 'HWR' } | Select-Object -First 1
+        $luecke = @($itemsW | ForEach-Object { if ($_ -eq $hwr.Nummer) { [pscustomobject]@{ X = $_.X; Y = $_.Y; T = '09' } } else { $_ } })
+        $b = @(Get-A4WWerkRaumstempel $luecke | Where-Object { -not $_.Ok })
+        if ($b.Count -eq 1 -and $b[0].Detail -match 'lückenlos' -and $b[0].Detail -match '05, 08') { $richtig++; $zeilen.Add("[richtig]      Lücke in den Raumnummern wird gemeldet") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       Lücke: $($b.Count) Befunde ($(($b | ForEach-Object { $_.Detail }) -join ' | '))") }
+
+        # Eine Nummer fehlt, andere sind da: gemeldet. Die Lücke in der Reihenfolge wird mit gemeldet (02 fehlt)
+        $b = @(Get-A4WWerkRaumstempel @($itemsW | Where-Object { $_ -ne $buero.Nummer }) | Where-Object { -not $_.Ok })
+        if (@($b | Where-Object { $_.Angabe -eq 'Raum Büro' -and $_.Detail -match 'Raumnummer fehlt' }).Count -eq 1) { $richtig++; $zeilen.Add("[richtig]      Nummer nur beim Büro entfernt (andere haben eine): wird gemeldet") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       Nummer beim Büro entfernt: $($b.Count) Befunde ($(($b | ForEach-Object { $_.Detail }) -join ' | '))") }
+
+        # Raumhöhe: 26,50 statt 2,650 und 1,00 wird gemeldet, 2,40 und 3,00 sind in Ordnung
+        foreach ($fall in @(@('26,50', $true), @('1,00', $true), @('2,40', $false), @('3,00', $false))) {
+            $rhItem = $buero.Felder['RH'].Wert
+            $x = @($itemsW | ForEach-Object { if ($_ -eq $rhItem) { [pscustomobject]@{ X = $_.X; Y = $_.Y; T = $fall[0] } } else { $_ } })
+            $b = @(Get-A4WWerkRaumstempel $x | Where-Object { -not $_.Ok })
+            $gut = if ($fall[1]) { $b.Count -eq 1 -and $b[0].Detail -match 'Raumhöhe' -and $null -ne $b[0].X } else { $b.Count -eq 0 }
+            if ($gut) { $richtig++; $zeilen.Add("[richtig]      Raumhöhe $($fall[0]) m: $(if ($fall[1]) { 'wird gemeldet' } else { 'in Ordnung' })") }
+            else { $falsch++; $zeilen.Add("[FALSCH]       Raumhöhe $($fall[0]): $($b.Count) Befunde") }
+        }
+
+        # Zusammenspiel in der Werkphase: Ohne Fläche (NGF-Zeile) meldet A4, ohne Raumname meldet A3
+        $ohneNgf = @($itemsW | Where-Object { $_ -ne $buero.Felder['NGF'].Label -and $_ -ne $buero.Felder['NGF'].Wert })
+        $b = @(Get-A4Raumflaechen $ohneNgf | Where-Object { -not $_.Ok })
+        if (@($b | Where-Object { $_.Angabe -eq 'Raum Büro' }).Count -ge 1) { $richtig++; $zeilen.Add("[richtig]      Büro ohne Fläche (NGF-Zeile weg): A4 meldet es") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       Büro ohne NGF: A4 meldet $($b.Count) Befunde") }
+        $ohneName = @($itemsW | Where-Object { $_ -ne $buero.Name })
+        $b = @(Get-A3Raumbezeichnungen $ohneName | Where-Object { -not $_.Ok })
+        if ($b.Count -ge 1) { $richtig++; $zeilen.Add("[richtig]      Raumstempel ohne Raumname: A3 meldet es") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       Büro ohne Namen: A3 meldet nichts") }
+
+        if (@(Get-AktivePruefungen 'entwurf' | Where-Object { $_ -like 'A4W*' }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      A4W läuft nur in der Werkplanung, nicht im Entwurf") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       A4W ist auch im Entwurf aktiv") }
+    }
+}
+# Selbsttest A10: BRH je Fenster (Fehler im Speicher nachgestellt)
+if ($werkOk -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A10' }).Count -gt 0) {
+    $zeilen.Add("")
+    $zeilen.Add("== Selbsttest A10: BRH je Fenster")
+    $itemsB = @(Get-PdfTextItems $werkOk.FullName)
+    $brhB = @($itemsB | Where-Object { $_.T -cmatch '^BRH' })
+    $r = @(Get-A10Brh $itemsB)
+    if ($brhB.Count -eq 14 -and $r.Count -eq 14 -and @($r | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Musterplan: 14 BRH-Angaben, alle mit Wert") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Musterplan: $($brhB.Count) BRH gefunden, $($r.Count) Ergebnisse, $(@($r | Where-Object { -not $_.Ok }).Count) Befunde") }
+
+    # Wert hinter der ersten BRH entfernen (BRH 0,00 im unteren Plan): genau ein Befund an dieser Stelle
+    $erste = $brhB | Sort-Object Y, X | Select-Object -First 1
+    $wertE = $itemsB | Where-Object { [math]::Abs($_.Y - $erste.Y) -le 2.5 -and $_.X -gt $erste.X + 3 -and ($_.X - $erste.X) -le 45 -and $_.T -match $script:BrhWert } | Select-Object -First 1
+    $b = @(Get-A10Brh @($itemsB | Where-Object { $_ -ne $wertE }) | Where-Object { -not $_.Ok })
+    if ($b.Count -eq 1 -and [math]::Abs($b[0].X - $erste.X) -lt 1 -and [math]::Abs($b[0].Y - $erste.Y) -lt 1) { $richtig++; $zeilen.Add("[richtig]      Wert hinter einer BRH fehlt: genau ein Befund an dieser Stelle (Position)") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       BRH-Wert entfernt: $($b.Count) Befunde") }
+
+    # Wert steht bei einer BRH, die an anderer Stelle (nicht auf derselben Zeile) liegt: zählt nicht
+    $versetzt = @($itemsB | ForEach-Object { if ($_ -eq $wertE) { [pscustomobject]@{ X = $_.X; Y = $_.Y + 30; T = $_.T } } else { $_ } })
+    $b = @(Get-A10Brh $versetzt | Where-Object { -not $_.Ok })
+    if ($b.Count -eq 1) { $richtig++; $zeilen.Add("[richtig]      Wert auf anderer Zeile zählt nicht als Wert der BRH") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       versetzter BRH-Wert: $($b.Count) Befunde") }
+
+    # Keine BRH im Plan: Befund
+    $b = @(Get-A10Brh @($itemsB | Where-Object { $_.T -cnotmatch '^BRH' }) | Where-Object { -not $_.Ok })
+    if ($b.Count -eq 1 -and $b[0].Detail -match 'keine BRH') { $richtig++; $zeilen.Add("[richtig]      keine BRH im Plan: ein Befund") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       keine BRH: $($b.Count) Befunde") }
+
+    # BRH und Wert in einem Stück ("BRH 95"), "BRH:" und Wörter wie BRHxyz
+    $einStueck = @([pscustomobject]@{ X = 10; Y = 10; T = 'BRH 95' }, [pscustomobject]@{ X = 50; Y = 50; T = 'BRH: 0,00' }, [pscustomobject]@{ X = 90; Y = 90; T = 'BRH' }, [pscustomobject]@{ X = 100; Y = 90.5; T = '1,01' })
+    $r = @(Get-A10Brh $einStueck)
+    if ($r.Count -eq 3 -and @($r | Where-Object { $_.Ok }).Count -eq 3) { $richtig++; $zeilen.Add("[richtig]      'BRH 95', 'BRH: 0,00' und BRH mit Wert als eigenes Stück werden erkannt") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Schreibweisen: $(($r | ForEach-Object { "$($_.Angabe)=$($_.Ok)" }) -join ', ')") }
+
+    $ohneWert = @([pscustomobject]@{ X = 10; Y = 10; T = 'BRH' }, [pscustomobject]@{ X = 20; Y = 10; T = 'Fenster' })
+    $b = @(Get-A10Brh $ohneWert | Where-Object { -not $_.Ok })
+    if ($b.Count -eq 1 -and $b[0].Detail -match 'keinen Wert') { $richtig++; $zeilen.Add("[richtig]      BRH ohne Zahl dahinter wird gemeldet") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       BRH ohne Zahl: $($b.Count) Befunde") }
+
+    if (@(Get-AktivePruefungen 'entwurf' | Where-Object { $_ -like 'A10*' }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      A10 läuft nur in der Werkplanung") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       A10 ist auch im Entwurf aktiv") }
+}
 # Selbsttest KI-Anbindung: ohne echten Aufruf (die KI wird hier nur nachgestellt, es wird nichts gesendet).
 if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count -gt 0) {
     $zeilen.Add("")

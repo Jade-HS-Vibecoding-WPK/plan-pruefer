@@ -95,7 +95,9 @@ Jeder Punkt wird einzeln gebaut, getestet und committet. Dazu brauchen wir pro P
 
 | Nr. | Prüfpunkt | Stand |
 |-----|-----------|-------|
-| A4 | Raumflächen | **gebaut** (Entwurf und Werk, Grundversion: Fläche je Raumstempel). Werk-Zusatz (Umfang, Raumhöhe, Bodenbelag) fehlt noch |
+| A4 | Raumflächen | **gebaut** (Entwurf und Werk, Grundversion: Fläche je Raumstempel). Der Werk-Zusatz ist ein eigener Prüfpunkt (A4W, nächste Zeile) |
+| A4W | Werk-Raumstempel | **gebaut, neu ausgerichtet 17.11. (Entscheidung Team)** (nur Werkplanung, ohne KI, `a4w-werk-raumstempel.ps1`): Ob der erweiterte Stempel (Raumnummer, RU, RH, FB, WB, DB) vollständig ist, ist von Plan zu Plan verschieden, **fehlende erweiterte Angaben sind kein Fehler**. Pflicht sind nur Raumname (A3) und Fläche (A4), beide laufen auch in der Werkplanung. A4W prüft nur Vorhandenes: **Raumnummern** (doppelt? lückenlos? Hat ein Raum keine Nummer, obwohl andere eine haben, wird es gemeldet; hat kein Raum eine, kein Befund) und **Raumhöhe RH** (muss 2,00 bis 6,00 m sein). **Später mit den Maßketten (A2/A5):** Plausibilität von Fläche und Raumumfang |
+| A10 | BRH je Fenster | **gebaut** (nur Werkplanung, ohne KI): mindestens eine BRH-Angabe im Plan, jede BRH hat einen Wert (Zahl rechts daneben, bei hochkant stehendem Text darüber), Befund mit Position. Noch nicht: Abgleich mit der Fensterzahl |
 | A3 | Raumbezeichnungen | **gebaut** (Entwurf und Werk). Grenze: Ein Raum ohne Name **und** ohne Fläche steht nicht im PDF-Text und wird nicht gefunden (dafür bräuchte es Geometrie oder KI) |
 | A3K | Raum ohne Name und Fläche (KI) | **gebaut, Fundtest 17.11. gemischt.** Mit dem kleinen Modell und PDF-Eingabe wird der unbeschriftete Raum **nicht** gefunden (die KI zählt nur beschriftete Räume). Mit dem Bild, der Liste der schon bekannten Räume in der Frage und dem stärkeren Modell `gemini-3.8-flash` wurde das Büro in `04_A3K_fehler.pdf` einmal **gefunden**, spätere Läufe liefen aber ins Zeitlimit. Läuft nur mit eingeschalteter KI, Ergebnis ist ein Hinweis |
 | A7 | Höhenangaben (Fußbodenhöhe) | **gebaut** (Entwurf und Werk): mindestens eine Höhenkote wie ±0,00 im Plan, ohne KI |
@@ -126,8 +128,8 @@ Jeder Punkt wird einzeln gebaut, getestet und committet. Dazu brauchen wir pro P
 
 | Schritt | Punkt | Was wird geprüft | Art | Warum an dieser Stelle |
 |---------|-------|------------------|-----|------------------------|
-| 1 | **A4 Werk-Raumstempel** | Jeder Raumstempel hat Raumnummer, Fläche, Umfang (RU), Raumhöhe (RH) und die drei Beläge (FB, WB, DB) mit Wert | Text | Aufbau ist bekannt, schnell und sicher, trifft Checkliste G.3.1 |
-| 2 | **A10 BRH je Fenster** | Jede BRH-Angabe hat einen Wert; später Abgleich mit der Fensterzahl | Text, später Geometrie | Text steht im PDF (14 Stück), gleiche Technik wie Schritt 1 |
+| 1 | **A4 Werk-Raumstempel (A4W)** ✔ gebaut 17.11. | Jeder Raumstempel hat Raumnummer, Fläche, Umfang (RU), Raumhöhe (RH) und die drei Beläge (FB, WB, DB) mit Wert | Text | Aufbau ist bekannt, schnell und sicher, trifft Checkliste G.3.1 |
+| 2 | **A10 BRH je Fenster** ✔ gebaut 17.11. | Jede BRH-Angabe hat einen Wert; später Abgleich mit der Fensterzahl | Text, später Geometrie | Text steht im PDF (14 Stück), gleiche Technik wie Schritt 1 |
 | 3 | **A11 Planinhalt beschriftet** | "Grundriss ... M 1:50" steht im Plan, Maßstab stimmt zum Plankopf | Text | sehr einfach, trifft G.3.6 |
 | 4 | **A9 Achsen** | Achsen A bis E und 1 bis 3 an beiden Enden bezeichnet, keine Lücke in der Reihenfolge, Achsmaßketten vorhanden | Text, Geometrie | baut auf dem Wissen über Buchstaben und Kreise auf |
 | 5 | **A2 Bemaßung** (nicht vergessen, siehe unten) | Maßketten vollständig und richtig | Text, Geometrie | größter Brocken, braucht die Vorarbeit aus Schritt 4 |
