@@ -48,6 +48,10 @@ $script:A7K_Schema = @{
 
 # Wandelt die Antwort der KI in Ergebnisse um (getrennt vom Aufruf, damit es ohne echte KI getestet werden kann).
 function ConvertTo-A7KErgebnisse($antwort) {
+    # Hat die KI nicht die vorgegebene Struktur geliefert, darf das nie als "keine Funde" durchgehen.
+    if ($null -eq $antwort -or -not ($antwort.PSObject.Properties.Name -contains 'bereiche')) {
+        throw "Die KI-Antwort hatte nicht die erwartete Struktur (Feld 'bereiche' fehlt)."
+    }
     foreach ($b in @($antwort.bereiche)) {
         if ($null -eq $b) { continue }
         $lage = if ($b.lage) { [string]$b.lage } else { 'Lage unbekannt' }

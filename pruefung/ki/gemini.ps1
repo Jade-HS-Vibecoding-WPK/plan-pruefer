@@ -84,6 +84,11 @@ function Get-KiFehlerText($ex) {
 
 function Get-KiAntwortText($r) {
     if ($r.output_text) { return [string]$r.output_text }
+    # Interactions-API: Schritte (steps), der Schritt "model_output" enthält den Antworttext
+    if ($r.steps) {
+        $teile = @($r.steps | Where-Object { $_.type -eq 'model_output' } | ForEach-Object { @($_.content) | ForEach-Object { if ($_.text) { [string]$_.text } } })
+        if ($teile.Count -gt 0) { return ($teile -join '') }
+    }
     foreach ($feld in 'outputs', 'output') {
         if ($r.$feld) {
             $teile = @($r.$feld | ForEach-Object {
@@ -132,8 +137,8 @@ function Invoke-KiPdfFrage([string]$PdfPfad, [string]$Frage, $Schema) {
             Url     = "$script:KiBasis/models/${modell}:generateContent"
             Headers = @{ 'x-goog-api-key' = $key }
             Body    = @{
-                contents         = @(@{ parts = @(@{ inline_data = @{ mime_type = 'application/pdf'; data = $b64 } }, @{ text = $Frage + "`nAntworte ausschließlich mit JSON." }) })
-                generationConfig = @{ responseMimeType = 'application/json' }
+                contents         = @(@{ parts = @(@{ inline_data = @{ mime_type = 'application/pdf'; data = $b64 } }, @{ text = $Frage }) })
+                generationConfig = @{ responseMimeType = 'application/json'; responseJsonSchema = $Schema }
             }
         }
     )

@@ -19,7 +19,10 @@ Stand: Ende Montag, 16.11.2026 (Tag 1 von 5). Der Zeitplan steht in [PLAN.md](PL
 - **A7 Höhenangaben** (Fußbodenhöhe, ohne KI) gebaut.
 - **A7K Höhenangabe an Raumebenen (KI)** gebaut, ebenfalls noch nicht live getestet. Entschieden: Pflicht nur dort, wo die Ebene wechselt.
 - Testlauf: 17 von 17 richtig (ohne echten KI-Aufruf).
-- Für die KI-Live-Tests fehlen noch: Schlüssel in `schluessel.txt`, `04_A3K_fehler.pdf` und `05_A7K_fehler.pdf` in `testplaene/entwurf/`.
+- **KI läuft:** Schlüssel in `schluessel.env` wird erkannt (die App liest `schluessel.txt`, `schluessel.env` und `.env`, alle in der `.gitignore`). Die Verbindung zu Gemini funktioniert, die KI liest Raumnamen und Flächen im Musterplan fehlerfrei.
+- **Beim ersten Live-Test gefunden und behoben:** Die KI-Antwort kam in einem unbekannten Feld (`steps`), die App wich auf einen zweiten Weg aus, und die KI hielt sich nicht an die vorgegebene Struktur. Das hätte stillschweigend "keine Funde" ergeben. Jetzt wird die Antwort richtig gelesen, und eine falsche Struktur gibt eine Meldung statt "keine Funde". Dazu ein Test.
+- Negativtest live: In `01_A_ok.pdf`, `01_A4_fehler.pdf` und `03_A3_fehler.pdf` meldet die KI keinen Raum ohne Name und Fläche (richtig).
+- **Noch offen für den Fundtest:** `04_A3K_fehler.pdf` (ein Raum ohne Stempel) und `05_A7K_fehler.pdf` (Ebenenwechsel ohne Höhenkote) in `testplaene/entwurf/`.
 
 ## Eure Aufgaben für morgen
 
