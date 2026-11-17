@@ -11,7 +11,7 @@
 #>
 
 $script:A7K_Frage = @'
-Du prüfst einen Grundriss (ArchiCAD-Export) auf Höhenangaben. Höhenkoten stehen als Zahl mit Vorzeichen im Plan, zum Beispiel ±0,00, +0,15 oder -0,30.
+Das Bild zeigt einen Grundriss (ArchiCAD-Export). Du prüfst ihn auf Höhenangaben. Höhenkoten stehen als Zahl mit Vorzeichen im Plan, zum Beispiel ±0,00, +0,15 oder -0,30.
 
 Suche Bereiche im Plan, in denen die Höhenlage des Fußbodens wechselt: Stufen, Podeste, abgesenkte oder erhöhte Bereiche (zum Beispiel ein Eingang mit Stufe, ein abgesenktes Bad, eine Terrasse unter oder über dem Fußbodenniveau).
 
@@ -64,8 +64,9 @@ function ConvertTo-A7KErgebnisse($antwort) {
     }
 }
 
-function Get-A7KBereiche($pdfPfad) {
-    $antwort = Invoke-KiPdfFrage $pdfPfad $script:A7K_Frage $script:A7K_Schema
+function Get-A7KBereiche($pdfPfad, $bildPfad) {
+    $datei = if ($bildPfad -and (Test-Path $bildPfad)) { $bildPfad } else { $pdfPfad }
+    $antwort = Invoke-KiPdfFrage $datei $script:A7K_Frage $script:A7K_Schema
     ConvertTo-A7KErgebnisse $antwort
 }
 
@@ -74,5 +75,5 @@ $script:Pruefungen += @{
     Name   = 'Höhenangabe an Raumebenen (KI)'
     Phasen = @('entwurf', 'werk')
     Ki     = $true
-    Run    = { param($items, $pdfPfad) Get-A7KBereiche $pdfPfad }
+    Run    = { param($items, $pdfPfad, $bildPfad) Get-A7KBereiche $pdfPfad $bildPfad }
 }

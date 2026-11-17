@@ -1,18 +1,20 @@
 ﻿<#
-  A6 Schnittlinien: Ist mindestens ein Schnitt eingezeichnet, und ist er an beiden Enden beschriftet?
+  A6 Schnittlinien: Sind die Schnittbezeichnungen an beiden Enden gesetzt?
 
-  Eine Schnittlinie hat an jedem Ende dieselbe Bezeichnung, zum Beispiel ein "A" oben und ein "A" unten
-  (Schnitt A-A). Die Buchstaben stehen als Text im PDF. Erkannt wird ein Schnitt, wenn derselbe einzelne
-  Großbuchstabe zweimal im Plan steht, weit voneinander entfernt und auf einer Linie (senkrecht oder waagerecht).
+  Eine Schnittlinie ist eine Strich-Punkt-Linie mit zwei Dreiecken (Blickrichtung). Sie DARF mit Buchstaben
+  beschriftet sein, muss aber nicht. Hat sie Buchstaben, dann an jedem Ende derselbe, zum Beispiel ein "A" oben und
+  ein "A" unten (Schnitt A-A). Die Buchstaben stehen als Text im PDF. Erkannt wird ein beschrifteter Schnitt, wenn
+  derselbe einzelne Großbuchstabe zweimal im Plan steht, weit voneinander entfernt und auf einer Linie (senkrecht
+  oder waagerecht).
 
-  Geprüft wird:
-    1. Mindestens eine Schnittlinie ist vorhanden.
-    2. Jede Schnittbezeichnung steht an beiden Enden. Ein einzelner Buchstabe ohne Gegenstück wird gemeldet.
+  Geprüft wird: Ein einzelner Buchstabe ohne Gegenstück am anderen Ende wird gemeldet.
+  Eine Schnittlinie ganz ohne Buchstaben ist in Ordnung und löst hier keinen Befund aus.
 
-  Nicht geprüft (braucht die KI, siehe A6K): die Blickrichtung (Dreiecke oder Pfeile am Ende der Linie).
+  Nicht geprüft (braucht das Bild, siehe A6K): ob überhaupt eine Schnittlinie da ist, ob an beiden Enden ein
+  Dreieck steht und ob beide Dreiecke in dieselbe Richtung zeigen.
 
   Grenze: In Werkplänen tragen auch Achsen gleiche Buchstaben an beiden Enden. Dann sieht A6 auch Achsen als
-  Schnitte. Das Vorhandensein eines Schnitts kann dort also nur bedingt bestätigt werden.
+  Schnitte. Das ist unkritisch, weil A6 nur einzelne Buchstaben ohne Gegenstück meldet.
 #>
 
 $script:A6_MinAbstand = 100   # Mindestabstand der beiden Enden (Punkt im PDF)
@@ -54,9 +56,8 @@ function Get-A6Schnittlinien($items) {
         $ergebnisse.Add((New-Result "Schnitt $($e.T)" $false '' "Die Schnittbezeichnung '$($e.T)' steht nur an einem Ende. Eine Schnittlinie braucht an beiden Enden dieselbe Bezeichnung." $e.X $e.Y))
     }
 
-    if ($paarAnzahl -eq 0 -and @($ergebnisse | Where-Object { -not $_.Ok }).Count -eq 0) {
-        $ergebnisse.Add((New-Result 'Schnittlinie' $false '' 'Es wurde keine Schnittlinie gefunden (gesucht: dieselbe Bezeichnung, zum Beispiel A, an beiden Enden einer Linie).'))
-    }
+    # Hinweis: Eine Schnittlinie darf auch OHNE Buchstaben existieren (Strich-Punkt-Linie mit zwei Dreiecken).
+    # Ob überhaupt eine Schnittlinie vorhanden ist, kann deshalb nur die Bildprüfung A6K beantworten.
     $ergebnisse | Sort-Object { $_.Ok }, Angabe
 }
 

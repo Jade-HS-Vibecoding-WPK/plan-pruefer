@@ -24,6 +24,19 @@ Stand: Ende Montag, 16.11.2026 (Tag 1 von 5). Der Zeitplan steht in [PLAN.md](PL
 - Negativtest live: In `01_A_ok.pdf`, `01_A4_fehler.pdf` und `03_A3_fehler.pdf` meldet die KI keinen Raum ohne Name und Fläche (richtig).
 - **Noch offen für den Fundtest:** `04_A3K_fehler.pdf` (ein Raum ohne Stempel) und `05_A7K_fehler.pdf` (Ebenenwechsel ohne Höhenkote) in `testplaene/entwurf/`.
 
+- **A6 Schnittlinien** gebaut (ohne KI): mindestens ein Schnitt, beide Enden beschriftet. **A6K Schnitt-Blickrichtung (KI)** gebaut, im Musterplan live ohne falschen Fund. Testlauf: 25 von 25 richtig.
+- Für A6K fehlt noch ein Fehlerplan ohne Dreieck (optional `07_A6K_fehler.pdf`).
+
+## Dienstag Vormittag: Fundtest der KI und was dabei herauskam
+
+- `04_A3K_fehler.pdf` (Büro-Stempel gelöscht) und `05_A7K_fehler.pdf` sind im Ordner, dazu `05_A7K_okay.pdf` als Gegenfall.
+- **A3K:** Mit PDF-Eingabe und dem kleinen Modell wurde das unbeschriftete Büro **nicht** gefunden. Mit Bild, bekannter Raumliste in der Frage und `gemini-3.8-flash` wurde es einmal gefunden, danach Zeitlimit. Die App erzeugt jetzt bei eingeschalteter KI ein Bild der Planseite im Browser (pdf.js von cdnjs) und schickt es mit.
+- **A6K:** Falsche Alarme (die KI behauptet unterschiedliche Dreiecke oder ein fehlendes Dreieck, obwohl beide Dreiecke nach links zeigen).
+- **A7K:** Die Testpläne zeigen keinen sichtbaren Ebenenwechsel. Nur im `okay`-Plan steht zusätzlich die Höhenkote `+0,15`. **Frage ans Team:** Wo ist der Ebenenwechsel in `05_A7K_fehler.pdf` gezeichnet?
+- **Korrektur A6 (von euch):** Eine Schnittlinie darf ohne Buchstaben existieren (Strich-Punkt-Linie mit zwei Dreiecken in gleicher Richtung). A6 prüft nur noch, ob ein einzelner Buchstabe ohne Gegenstück steht. Ob eine Schnittlinie da ist, kann nur das Bild (A6K) beurteilen.
+- **A1 Nordpfeil** gebaut (ohne KI, ein "N" als Text). Testlauf: 32 von 32 richtig, 2 übersprungen (KI-Pläne).
+- **Offene Entscheidung:** Wie gehen wir mit den unzuverlässigen KI-Prüfungen um? (siehe Chat)
+
 ## Eure Aufgaben für morgen
 
 1. **Server neu starten**, damit alles Neue gilt: das schwarze Server-Fenster schließen und `Planpruefer-starten.cmd` doppelklicken. (Der Server läuft zurzeit noch mit altem Stand.)

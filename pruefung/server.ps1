@@ -50,6 +50,28 @@ try {
                 # Sagt der Seite, ob die KI-Prüfung eingerichtet ist (der Schlüssel selbst wird nie gesendet)
                 Send-Json $ctx @{ ki = (Test-KiVerfuegbar); modell = (Get-KiModell) }
             }
+            elseif ($req.HttpMethod -eq 'POST' -and $path -eq '/bild') {
+                # Bild der Planseite (PNG) für die KI-Prüfungen zwischenspeichern. Die Seite schickt es vor der Prüfung
+                # und nennt danach die Nummer im Kopf X-Bild.
+                if ($req.ContentLength64 -gt 30MB) { Send-Json $ctx @{ fehler = 'Das Bild ist zu groß.' } 413; continue }
+                $bildId = [guid]::NewGuid().ToString('N')
+                $bildDatei = Join-Path $tempOrdner "$bildId.png"
+                try {
+                    $fs = [System.IO.File]::Create($bildDatei)
+                    $req.InputStream.CopyTo($fs)
+                    $fs.Close()
+                    $kopf = [System.IO.File]::ReadAllBytes($bildDatei) | Select-Object -First 4
+                    if (($kopf -join ',') -ne '137,80,78,71') {
+                        Remove-Item $bildDatei -Force -ErrorAction SilentlyContinue
+                        Send-Json $ctx @{ fehler = 'Das ist kein PNG-Bild.' } 400
+                        continue
+                    }
+                    Send-Json $ctx @{ id = $bildId }
+                } catch {
+                    Remove-Item $bildDatei -Force -ErrorAction SilentlyContinue
+                    throw
+                }
+            }
             elseif ($req.HttpMethod -eq 'POST' -and $path -eq '/pruefen') {
                 $name = [System.Uri]::UnescapeDataString([string]$req.Headers['X-Dateiname'])
                 if (-not $name) { $name = 'plan.pdf' }
@@ -73,7 +95,10 @@ try {
                         continue
                     }
                     $mitKi = ([string]$req.Headers['X-Ki']).ToLowerInvariant() -eq 'ja'
-                    $res = @(Invoke-Pruefungen $tmp $phase $mitKi)
+                    $bildPfad = ''
+                    $bildNr = [string]$req.Headers['X-Bild']
+                    if ($bildNr -match '^[0-9a-f]{32}$' -and (Test-Path (Join-Path $tempOrdner "$bildNr.png"))) { $bildPfad = Join-Path $tempOrdner "$bildNr.png" }
+                    $res = @(Invoke-Pruefungen $tmp $phase $mitKi $bildPfad)
                     $meldungen = @(Get-Meldungen)
                     $befunde = @($res | ForEach-Object {
                             @{ angabe = $_.Angabe; ok = [bool]$_.Ok; wert = [string]$_.Wert; hinweis = [string]$_.Detail; punkt = [string]$_.Punkt; quelle = [string]$_.Quelle; x = $_.X; y = $_.Y }
@@ -82,6 +107,7 @@ try {
                     Send-Json $ctx @{ datei = $name; phase = $phase; mitKi = $mitKi; befunde = $befunde; aktiv = @(Get-AktivePruefungen $phase $mitKi); meldungen = $meldungen }
                 } finally {
                     if (Test-Path $tmp) { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
+                    if ($bildPfad -and (Test-Path $bildPfad)) { Remove-Item $bildPfad -Force -ErrorAction SilentlyContinue }
                 }
             }
             else {

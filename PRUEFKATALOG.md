@@ -81,16 +81,27 @@ Jeder Punkt wird einzeln gebaut, getestet und committet. Dazu brauchen wir pro P
 - Hochschul-Dokumente (Entwurfszeichnungen, Werkplanungen) in den Ordner `unterlagen/` legen. Daraus wird gefiltert, welche Kriterien für Grundrisse in Stufe 1 gelten.
 - Testpläne je Prüfpunkt besorgen (sauber und mit Fehler) und in `testplaene/entwurf/` bzw. `testplaene/werk/` ablegen, Benennung siehe `testplaene/LIESMICH.md`. Die alten Plankopf-Testpläne in `archiv/testplaene/` zählen dafür nicht.
 
+## Erkenntnisse zur KI (Stand 17.11.)
+
+- **PDF-Eingabe ist für Zeichnungen ungeeignet.** Gemini liest aus einem PDF vor allem den Text. Ein Raum ohne Text ist für die KI unsichtbar. Deshalb erzeugt die Seite bei eingeschalteter KI ein Bild der Planseite (pdf.js im Browser) und schickt es mit.
+- **Die Frage muss gezielt sein.** "Liste alle Räume" zählt nur die beschrifteten. Besser: die bekannten Räume nennen und nach **weiteren** fragen.
+- **Das stärkere Modell hilft, kostet aber Zeit und Zuverlässigkeit.** `gemini-3.8-flash` fand den unbeschrifteten Raum, antwortet aber langsam (bis 90 s pro Plan, teils Zeitlimit oder "hohe Nachfrage"). Das kleine `gemini-3.5-flash-lite` ist schnell, übersieht aber den Raum.
+- **Kleine Zeichenelemente sind schwach.** A6K meldete bei zwei gleich gerichteten Dreiecken falsche Alarme (Dreiecke sind nur etwa 30 Pixel groß).
+- **KI-Funde bleiben Hinweise.** Sie sind nie die einzige Grundlage einer Aussage.
+
 ## Stand der Umsetzung
 
 | Nr. | Prüfpunkt | Stand |
 |-----|-----------|-------|
 | A4 | Raumflächen | **gebaut** (Entwurf und Werk, Grundversion: Fläche je Raumstempel). Werk-Zusatz (Umfang, Raumhöhe, Bodenbelag) fehlt noch |
 | A3 | Raumbezeichnungen | **gebaut** (Entwurf und Werk). Grenze: Ein Raum ohne Name **und** ohne Fläche steht nicht im PDF-Text und wird nicht gefunden (dafür bräuchte es Geometrie oder KI) |
-| A3K | Raum ohne Name und Fläche (KI) | **gebaut, live teilweise getestet** (17.11.): Verbindung zu Gemini funktioniert, die KI liest Raumnamen und Flächen im Musterplan fehlerfrei, und in drei Plänen ohne Raum mit fehlendem Name **und** Fläche meldet sie nichts (richtig). **Noch offen:** der Fundtest mit `04_A3K_fehler.pdf` (ein Raum ohne Stempel). Läuft nur mit eingeschalteter KI, Ergebnis ist ein Hinweis |
+| A3K | Raum ohne Name und Fläche (KI) | **gebaut, Fundtest 17.11. gemischt.** Mit dem kleinen Modell und PDF-Eingabe wird der unbeschriftete Raum **nicht** gefunden (die KI zählt nur beschriftete Räume). Mit dem Bild, der Liste der schon bekannten Räume in der Frage und dem stärkeren Modell `gemini-3.8-flash` wurde das Büro in `04_A3K_fehler.pdf` einmal **gefunden**, spätere Läufe liefen aber ins Zeitlimit. Läuft nur mit eingeschalteter KI, Ergebnis ist ein Hinweis |
 | A7 | Höhenangaben (Fußbodenhöhe) | **gebaut** (Entwurf und Werk): mindestens eine Höhenkote wie ±0,00 im Plan, ohne KI |
-| A7K | Höhenangabe an Raumebenen (KI) | **gebaut, live nur als Negativtest** (keine falschen Funde in drei Plänen ohne Ebenenwechsel). Fundtest mit `05_A7K_fehler.pdf` offen. Entschieden: Pflicht nur dort, wo die Ebene wechselt (Stufen, Podeste, abgesenkte oder erhöhte Bereiche). Läuft nur mit eingeschalteter KI, Ergebnis ist ein Hinweis |
-| A1, A2, A5, A6, A8 bis A11 | | noch nicht gebaut |
+| A7K | Höhenangabe an Raumebenen (KI) | **gebaut, Fundtest offen und die Testpläne sind unklar:** `05_A7K_okay.pdf` hat zusätzlich die Höhenkote `+0,15` neben dem Eingang, `05_A7K_fehler.pdf` hat sie nicht, aber in **beiden** Plänen ist **kein sichtbarer Ebenenwechsel** (keine Stufe, kein Podest) gezeichnet. Die KI kann nur melden, was im Bild zu sehen ist. Frage an das Team: Wo und wie ist der Ebenenwechsel dargestellt? Entschieden: Pflicht nur dort, wo die Ebene wechselt (Stufen, Podeste, abgesenkte oder erhöhte Bereiche). Läuft nur mit eingeschalteter KI, Ergebnis ist ein Hinweis |
+| A1 | Nordpfeil | **gebaut** (Entwurf und Werk, ohne KI): ein einzelnes großes "N" als Text im Plan. Grenze: Ein Nordpfeil ohne Buchstaben wird nicht erkannt (unberechtigter Befund), ein "N" ohne Zeichnung geht durch |
+| A6 | Schnittlinien (Beschriftung) | **gebaut** (Entwurf und Werk, ohne KI). **Korrigiert am 17.11.:** Eine Schnittlinie ist eine Strich-Punkt-Linie mit zwei Dreiecken in gleicher Richtung und darf ohne Buchstaben existieren. A6 meldet deshalb nur einen einzelnen Buchstaben ohne Gegenstück am anderen Ende, nicht mehr "keine Schnittlinie" |
+| A6K | Schnittlinien im Bild (KI) | **gebaut, aber unzuverlässig**: Existenz der Schnittlinie, Dreieck an beiden Enden, gleiche Richtung. Im Test meldete das stärkere Modell **falsche Alarme** (behauptet unterschiedliche Richtung oder fehlendes Dreieck, obwohl beide Dreiecke nach links zeigen). Siehe "Erkenntnisse zur KI" |
+| A2, A5, A8 bis A11 | | noch nicht gebaut |
 
 ## Entschieden
 

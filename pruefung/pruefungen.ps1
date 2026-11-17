@@ -51,7 +51,9 @@ function Get-AktivePruefungen([string]$Phase = 'entwurf', [bool]$MitKi = $false)
     @($script:Pruefungen | Where-Object { $_.Phasen -contains $Phase -and (-not $_.Ki -or $MitKi) } | ForEach-Object { "$($_.Id) $($_.Name)" })
 }
 
-function Invoke-Pruefungen([string]$Path, [string]$Phase = 'entwurf', [bool]$MitKi = $false) {
+# BildPfad: optional ein PNG-Bild der Planseite. Die KI-Prüfungen nutzen es, weil die KI Zeichnungen nur im Bild
+# wirklich sieht (bei einem PDF liest sie vor allem den Text).
+function Invoke-Pruefungen([string]$Path, [string]$Phase = 'entwurf', [bool]$MitKi = $false, [string]$BildPfad = '') {
     $script:Meldungen = @()
     $items = @(Get-PdfTextItems $Path)
     if ($items.Count -eq 0) {
@@ -65,13 +67,13 @@ function Invoke-Pruefungen([string]$Path, [string]$Phase = 'entwurf', [bool]$Mit
                 continue
             }
             try {
-                foreach ($r in @(& $p.Run $items $Path)) { if ($null -ne $r) { $r.Punkt = $p.Id; $r } }
+                foreach ($r in @(& $p.Run $items $Path $BildPfad)) { if ($null -ne $r) { $r.Punkt = $p.Id; $r } }
             } catch {
                 $script:Meldungen += "KI-Prüfung '$($p.Name)' konnte nicht ausgeführt werden: $($_.Exception.Message)"
             }
             continue
         }
-        foreach ($r in @(& $p.Run $items $Path)) {
+        foreach ($r in @(& $p.Run $items $Path $BildPfad)) {
             if ($null -ne $r) { $r.Punkt = $p.Id; $r }
         }
     }
