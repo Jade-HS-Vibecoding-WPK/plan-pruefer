@@ -52,7 +52,8 @@ foreach ($phase in 'entwurf', 'werk') {
         }
 
         $res = @(Invoke-Pruefungen $f.FullName $phase)
-        $befunde = @($res | Where-Object { -not $_.Ok })
+        # Hinweise (Quelle "hinweis", zum Beispiel A5 Wandmaße) sind keine sicheren Fehler und zählen hier nicht als Befund
+        $befunde = @($res | Where-Object { -not $_.Ok -and $_.Quelle -ne 'hinweis' })
         $gutePunkte = @($res | Where-Object { $_.Ok }).Count
 
         if ($art -eq 'ok') {
@@ -516,6 +517,156 @@ if ($werkOk -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A2' }).Count -
 
     if (@(Get-AktivePruefungen 'entwurf' | Where-Object { $_ -like 'A2*' }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      A2 läuft nur in der Werkplanung") }
     else { $falsch++; $zeilen.Add("[FALSCH]       A2 ist auch im Entwurf aktiv") }
+}
+# Selbsttest A8: Eingangspfeil (Pfeilspitzen aus den Strichen, Türbögen aus den Kurven)
+if (@($script:Pruefungen | Where-Object { $_.Id -eq 'A8' }).Count -gt 0) {
+    $zeilen.Add("")
+    $zeilen.Add("== Selbsttest A8: Eingangspfeil (Pfeilspitze vor einer Tür)")
+    function Neuer-Strich($x1, $y1, $x2, $y2) {
+        $a = [pscustomobject]@{ X = $x1; Y = $y1 }; $b = [pscustomobject]@{ X = $x2; Y = $y2 }
+        [pscustomobject]@{ Teile = @(, @($a, $b)); Art = 'strich'; Kurve = $false; X0 = [math]::Min($x1, $x2); Y0 = [math]::Min($y1, $y2); X1 = [math]::Max($x1, $x2); Y1 = [math]::Max($y1, $y2) }
+    }
+    function Neuer-Bogen($x0, $y0, $x1, $y1) { [pscustomobject]@{ Teile = @(, @([pscustomobject]@{ X = $x0; Y = $y0 })); Art = 'strich'; Kurve = $true; X0 = $x0; Y0 = $y0; X1 = $x1; Y1 = $y1 } }
+    # Pfeil nach oben: Spitze bei (100,100), Schaft nach unten
+    $pfeilHoch = @((Neuer-Strich 100 100 95 106), (Neuer-Strich 100 100 105 106), (Neuer-Strich 100 100 100 112))
+    $tuerOben = Neuer-Bogen 90 70 114 94        # Tür liegt oberhalb der Spitze (der Pfeil zeigt hin)
+    $tuerUnten = Neuer-Bogen 90 118 114 142     # Tür liegt unterhalb (der Pfeil zeigt weg)
+    $tuerFern = Neuer-Bogen 400 70 424 94
+
+    $r = @(Get-A8Eingangspfeil (@($pfeilHoch) + $tuerOben))
+    if ($r.Count -eq 1 -and $r[0].Ok -and $r[0].Wert -match 'an einer Tür') { $richtig++; $zeilen.Add("[richtig]      Pfeil vor einer Tür, zeigt auf sie: in Ordnung") } else { $falsch++; $zeilen.Add("[FALSCH]       Pfeil vor Tür: $(($r | ForEach-Object { "$($_.Ok) $($_.Detail)" }) -join ' | ')") }
+    $r = @(Get-A8Eingangspfeil (@($pfeilHoch) + $tuerUnten))
+    if ($r.Count -eq 1 -and -not $r[0].Ok -and $r[0].Detail -match 'nicht in der Nähe einer Tür|keine in der Nähe') { $richtig++; $zeilen.Add("[richtig]      Pfeil zeigt von der Tür weg: Befund") } else { $falsch++; $zeilen.Add("[FALSCH]       Pfeil von Tür weg: $(($r | ForEach-Object { "$($_.Ok) $($_.Detail)" }) -join ' | ')") }
+    $r = @(Get-A8Eingangspfeil (@($pfeilHoch) + $tuerFern))
+    if ($r.Count -eq 1 -and -not $r[0].Ok) { $richtig++; $zeilen.Add("[richtig]      Pfeil weit von der Tür entfernt: Befund") } else { $falsch++; $zeilen.Add("[FALSCH]       Pfeil fern der Tür: $(($r | ForEach-Object { "$($_.Ok) $($_.Detail)" }) -join ' | ')") }
+    $r = @(Get-A8Eingangspfeil @($tuerOben))
+    if ($r.Count -eq 1 -and -not $r[0].Ok -and $r[0].Detail -match 'kein Eingangspfeil') { $richtig++; $zeilen.Add("[richtig]      Tür ohne Pfeil im Plan: Befund 'kein Eingangspfeil'") } else { $falsch++; $zeilen.Add("[FALSCH]       ohne Pfeil: $(($r | ForEach-Object { "$($_.Ok) $($_.Detail)" }) -join ' | ')") }
+    # Rechtwinklige Ecken (Wände) und waagrechte oder senkrechte Striche sind keine Pfeilspitzen
+    $waende = @((Neuer-Strich 100 100 100 112), (Neuer-Strich 100 100 112 100), (Neuer-Strich 100 100 90 100))
+    if (@(Get-PfeilSpitzen @(Get-PfadStriche $waende)).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Wandecken (waagrechte und senkrechte Striche) sind keine Pfeilspitzen") } else { $falsch++; $zeilen.Add("[FALSCH]       Wandecke als Pfeilspitze erkannt") }
+
+    # Die fünf Beispiele aus testplaene\Eingangspfeile.pdf (Linienpfeil, Pfeil mit Dreieck, gefülltes Dreieck, Umriss-Dreieck, kleiner Pfeil)
+    $beispiele = Join-Path $ordner 'Eingangspfeile.pdf'
+    if (Test-Path $beispiele) {
+        $pfadeB = @(Get-PdfPfadeCached $beispiele)
+        $spB = @(Get-PfeilSpitzen @(Get-PfadStriche $pfadeB))
+        $rB = @(Get-A8Eingangspfeil $pfadeB)
+        if ($spB.Count -eq 5 -and @(Get-TuerBoegen $pfadeB).Count -eq 5 -and $rB.Count -eq 1 -and $rB[0].Ok -and $rB[0].Wert -match '^5 Pfeil') { $richtig++; $zeilen.Add("[richtig]      Eingangspfeile.pdf: alle 5 Pfeilformen vor ihrer Tür erkannt (Linienpfeil, Pfeil mit Dreieck, gefüllt, Umriss, klein)") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       Eingangspfeile.pdf: $($spB.Count) Spitzen, $(@(Get-TuerBoegen $pfadeB).Count) Türbögen, $(($rB | ForEach-Object { "$($_.Ok) $($_.Wert) $($_.Detail)" }) -join ' | ')") }
+        # Alle Pfeile entfernen (alle kleinen geraden Striche und Füllungen im Umkreis der Spitzen): kein Eingangspfeil mehr
+        $ohnePfeile = @($pfadeB | Where-Object {
+                $q = $_
+                -not ($q.Kurve -eq $false -and ($q.X1 - $q.X0) -le 20 -and ($q.Y1 - $q.Y0) -le 20 -and @($spB | Where-Object { [math]::Abs((($q.X0 + $q.X1) / 2) - $_.X) -le 15 -and [math]::Abs((($q.Y0 + $q.Y1) / 2) - $_.Y) -le 18 }).Count -gt 0)
+            })
+        $rO = @(Get-A8Eingangspfeil $ohnePfeile)
+        if ($rO.Count -eq 1 -and -not $rO[0].Ok) { $richtig++; $zeilen.Add("[richtig]      Eingangspfeile.pdf ohne die Pfeile: Befund") } else { $falsch++; $zeilen.Add("[FALSCH]       ohne Pfeile: $(($rO | ForEach-Object { "$($_.Ok) $($_.Wert) $($_.Detail)" }) -join ' | ')") }
+    } else { $zeilen.Add("[übersprungen] testplaene\Eingangspfeile.pdf nicht vorhanden") }
+
+    if (@(Get-AktivePruefungen 'entwurf' | Where-Object { $_ -like 'A8*' }).Count -eq 1 -and @(Get-AktivePruefungen 'werk' | Where-Object { $_ -like 'A8*' }).Count -eq 1) { $richtig++; $zeilen.Add("[richtig]      A8 läuft in Entwurf und Werkplanung") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       A8 ist nicht in beiden Phasen aktiv") }
+}
+# Selbsttest A2M: Maßzahl zu Maßlinie (Fehler im Speicher nachgestellt)
+if ($werkOk -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A2M' }).Count -gt 0) {
+    $zeilen.Add("")
+    $zeilen.Add("== Selbsttest A2M: Maßzahl zu Maßlinie (außen und innen)")
+    $itemsL = @(Get-PdfTextItems $werkOk.FullName)
+    $linienL = @(Get-PdfLinienCached $werkOk.FullName)
+    $r = @(Get-A2mPruefung $itemsL $linienL)
+    if ($r.Count -eq 1 -and $r[0].Ok -and [int]($r[0].Wert -replace '\D.*', '') -ge 80) { $richtig++; $zeilen.Add("[richtig]      Musterplan: $($r[0].Wert) (außen und innen), keine Befunde") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Musterplan: $(($r | ForEach-Object { "$($_.Ok) $($_.Wert) $($_.Detail)" }) -join ' | ')") }
+
+    function Ersetze-L($alle, $item, $neuerText) { @($alle | ForEach-Object { if ($_ -eq $item) { [pscustomobject]@{ X = $_.X; Y = $_.Y; T = $neuerText } } else { $_ } }) }
+    function Befund-L($zahlText, $y, $neuText, $erwartung, $name, $xMin = 0, $xMax = 99999) {
+        $n = $itemsL | Where-Object { $_.T -eq $zahlText -and [math]::Abs($_.Y - $y) -lt 3 -and $_.X -ge $xMin -and $_.X -le $xMax } | Select-Object -First 1
+        if (-not $n) { $script:falsch++; $script:zeilen.Add("[FALSCH]       $name -> Zahl $zahlText bei Y $y nicht gefunden"); return }
+        $b = @(Get-A2mPruefung (Ersetze-L $itemsL $n $neuText) $linienL | Where-Object { -not $_.Ok })
+        $gut = if ($erwartung -eq 1) { $b.Count -eq 1 -and $b[0].Wert -eq $neuText -and $null -ne $b[0].X -and $null -ne $b[0].Y } else { $b.Count -eq 0 }
+        if ($gut) { $script:richtig++; $script:zeilen.Add("[richtig]      $name") }
+        else { $script:falsch++; $script:zeilen.Add("[FALSCH]       $name -> $($b.Count) Befunde ($(($b | ForEach-Object { $_.Detail }) -join ' | '))") }
+    }
+    Befund-L '2,43' 133 '2,63' 1 'Öffnungsmaß oben 2,43 -> 2,63: ein Befund mit Position'
+    Befund-L '4,87' 48 '4,57' 1 'Achse zu Bauteil oben 4,87 -> 4,57: ein Befund'
+    Befund-L '2,43' 315 '2,13' 1 'Öffnungsmaß links (senkrechte Kette) 2,43 -> 2,13: ein Befund' 0 200
+    Befund-L '6,49' 415 '6,89' 1 'Innenkette im Gebäude 6,49 -> 6,89: ein Befund' 300 340
+    Befund-L '2,43' 133 '2,45' 0 'Abweichung von 2 cm bleibt unter der Toleranz: kein Befund (die Summenprüfung A2 meldet sie)'
+    Befund-L '1,78' 133 '1,78' 0 'Stück am Kettenende 5 cm kürzer als die Zahl (Zeichenweise im Musterplan): kein Befund' 1000 1200
+
+    # Zahl ohne Maßlinie (zum Beispiel in einem Stempel) wird nicht beachtet
+    $stempelZahl = @($itemsL) + [pscustomobject]@{ X = 500; Y = 300; T = '99,99' }
+    $rs = @(Get-A2mPruefung $stempelZahl $linienL | Where-Object { -not $_.Ok })
+    if ($rs.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Zahl ohne Maßlinie darunter wird nicht beachtet") } else { $falsch++; $zeilen.Add("[FALSCH]       Zahl ohne Maßlinie: $($rs.Count) Befunde") }
+
+    if (@(Get-AktivePruefungen 'entwurf' | Where-Object { $_ -like 'A2M*' }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      A2M läuft nur in der Werkplanung") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       A2M ist auch im Entwurf aktiv") }
+}
+# Selbsttest A5: Flächenplausibilität (Fehler im Speicher nachgestellt)
+if ($werkOk -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A5' }).Count -gt 0) {
+    $zeilen.Add("")
+    $zeilen.Add("== Selbsttest A5: Flächenplausibilität (Fläche, Umfang, Summe gegen Gebäude)")
+    $itemsF = @(Get-PdfTextItems $werkOk.FullName)
+    $linienF = @(Get-PdfLinienCached $werkOk.FullName)
+    $stempelF = @(Get-A4WRaumstempel $itemsF)
+    $r = @(Get-A5Flaechen $itemsF $linienF)
+    $gm = Get-A2Gesamtmasse $itemsF $linienF
+    if ($r.Count -eq 8 -and @($r | Where-Object { -not $_.Ok }).Count -eq 0 -and [math]::Abs($gm.Breite - 15.99) -lt 0.001 -and [math]::Abs($gm.Tiefe - 13.49) -lt 0.001) { $richtig++; $zeilen.Add("[richtig]      Musterplan: 7 Räume und Gebäudesumme (175,25 von 215,71 m²) plausibel, Gesamtmaße 15,99 und 13,49 gelesen") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Musterplan: $(($r | Where-Object { -not $_.Ok } | ForEach-Object { "$($_.Angabe): $($_.Detail)" }) -join ' | ')") }
+
+    function Ersetze-F($alle, $item, $neuerText) { @($alle | ForEach-Object { if ($_ -eq $item) { [pscustomobject]@{ X = $_.X; Y = $_.Y; T = $neuerText } } else { $_ } }) }
+    function Befund-F($items2, $angabe, $detail, $name) {
+        $b = @(Get-A5Flaechen $items2 $linienF | Where-Object { -not $_.Ok })
+        if (@($b | Where-Object { $_.Angabe -eq $angabe -and $_.Detail -match $detail }).Count -ge 1 -and $b.Count -le 2) { $script:richtig++; $script:zeilen.Add("[richtig]      $name") }
+        else { $script:falsch++; $script:zeilen.Add("[FALSCH]       $name -> $($b.Count) Befunde ($(($b | ForEach-Object { "$($_.Angabe): $($_.Detail)" }) -join ' | '))") }
+    }
+    $buero = $stempelF | Where-Object { $_.NameText -eq 'Büro' } | Select-Object -First 1
+    $wohnen = $stempelF | Where-Object { $_.NameText -eq 'Wohnen/Essen' } | Select-Object -First 1
+    $wc = $stempelF | Where-Object { $_.NameText -eq 'WC' } | Select-Object -First 1
+
+    Befund-F (Ersetze-F $itemsF $buero.Felder['RU'].Wert '18,000') 'Raum Büro' 'zu klein' 'Büro: Umfang 18,00 m bei 31,39 m² (Quadrat hat 22,41 m): Befund'
+    Befund-F (Ersetze-F $itemsF $buero.Felder['RU'].Wert '99,000') 'Raum Büro' 'unwahrscheinlich groß' 'Büro: Umfang 99,00 m bei 31,39 m²: Befund'
+    Befund-F (Ersetze-F $itemsF $wc.Felder['NGF'].Wert '0,30') 'Raum WC' 'unwahrscheinlich klein' 'WC: Fläche 0,30 m²: Befund'
+    Befund-F (Ersetze-F $itemsF $wohnen.Felder['NGF'].Wert '146,65') 'Raumflächen gesamt' 'mehr als das Gebäude' 'Wohnen/Essen 146,65 statt 46,65 m²: Summe größer als das Gebäude (Befund)'
+    # WC genau quadratisch (RU = 4 mal Wurzel aus NGF) bleibt in Ordnung (Rundung): im Musterplan 3,76 und 7,760
+    if (@($r | Where-Object { $_.Angabe -eq 'Raum WC' -and $_.Ok }).Count -eq 1) { $richtig++; $zeilen.Add("[richtig]      WC mit quadratischem Grundriss (Umfang genau 4 mal Wurzel aus der Fläche) bleibt in Ordnung") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       WC quadratisch") }
+
+    # Fast alle Stempel fehlen: nur WC und Technik übrig, Hinweis 'nur x Prozent'
+    $behalten = @($stempelF | Where-Object { $_.NameText -in 'WC', 'Technik' })
+    $ohneAndere = @($itemsF | Where-Object {
+            $i = $_
+            -not (@($stempelF | Where-Object { $_.NameText -notin 'WC', 'Technik' } | Where-Object { [math]::Abs($i.X - $_.AnkerX) -le 60 -and $i.Y -ge ($_.Oben - 35) -and $i.Y -le ($_.Oben + 95) }).Count -gt 0)
+        })
+    $bb = @(Get-A5Flaechen $ohneAndere $linienF | Where-Object { -not $_.Ok })
+    if ($bb.Count -eq 1 -and $bb[0].Angabe -eq 'Raumflächen gesamt' -and $bb[0].Detail -match 'Prozent') { $richtig++; $zeilen.Add("[richtig]      nur zwei kleine Räume im Plan: Hinweis 'deckt nur x Prozent ab'") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       fast keine Räume: $($bb.Count) Befunde ($(($bb | ForEach-Object { "$($_.Angabe): $($_.Detail)" }) -join ' | '))") }
+
+    # Fehlende Angaben sind kein Fehler: Umfang oder Fläche ganz weg (Zeile entfernt)
+    $ohneRu = @($itemsF | Where-Object { $_ -ne $buero.Felder['RU'].Wert -and $_ -ne $buero.Felder['RU'].Label })
+    $rr = @(Get-A5Flaechen $ohneRu $linienF | Where-Object { -not $_.Ok })
+    if ($rr.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Büro ohne RU-Zeile: kein Befund (fehlende Angabe ist kein Fehler)") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Büro ohne RU: $($rr.Count) Befunde") }
+
+    # Ohne Achsraster: nur Raumprüfungen, keine Summe gegen das Gebäude
+    $rk = @(Get-A5Flaechen $itemsF @())
+    if ($rk.Count -eq 7 -and @($rk | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      ohne Achsraster: Räume geprüft, Gebäudesumme entfällt") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       ohne Achsraster: $($rk.Count) Ergebnisse") }
+
+    # Stufe 2: NGF und RU gegen die Wand-Maßketten (Hinweis ab 3 Prozent)
+    $w = @(Get-A5Wandmasse $itemsF $linienF)
+    $wOk = @($w | Where-Object { $_.Ok }); $wHin = @($w | Where-Object { -not $_.Ok })
+    if ($wOk.Count -ge 5 -and @($wHin | Where-Object { $_.Quelle -ne 'hinweis' }).Count -eq 0 -and @($wOk | Where-Object { $_.Angabe -eq 'Raum Büro (Wandmaße)' -and $_.Wert -match '6,49' }).Count -eq 1) { $richtig++; $zeilen.Add("[richtig]      Wandmaße: $($wOk.Count) Räume passen zu den Wand-Maßketten (zum Beispiel Büro 6,49 m), $($wHin.Count) Hinweis(e), keine Fehler") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Wandmaße: $(($w | ForEach-Object { "$($_.Angabe)=$($_.Ok) $($_.Wert)" }) -join ' | ')") }
+    $ngf10 = Ersetze-F $itemsF $buero.Felder['NGF'].Wert '34,53'
+    $wb = @(Get-A5Wandmasse $ngf10 $linienF | Where-Object { $_.Angabe -eq 'Raum Büro (Wandmaße)' })
+    if ($wb.Count -eq 1 -and -not $wb[0].Ok -and $wb[0].Quelle -eq 'hinweis' -and $wb[0].Detail -match 'Hinweis') { $richtig++; $zeilen.Add("[richtig]      Büro NGF 34,53 statt 31,39 (10 Prozent zu groß): gelber Hinweis 'weicht von den Wandmaßen ab'") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Büro NGF +10 Prozent: $(($wb | ForEach-Object { "$($_.Ok) $($_.Quelle) $($_.Detail)" }) -join ' | ')") }
+    $ru10 = Ersetze-F $itemsF $wc.Felder['RU'].Wert '8,540'
+    $wr = @(Get-A5Wandmasse $ru10 $linienF | Where-Object { $_.Angabe -eq 'Raum WC (Wandmaße)' })
+    if ($wr.Count -eq 1 -and -not $wr[0].Ok -and $wr[0].Quelle -eq 'hinweis') { $richtig++; $zeilen.Add("[richtig]      WC RU 8,54 statt 7,76 (10 Prozent zu groß): Hinweis") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       WC RU +10 Prozent: $(($wr | ForEach-Object { "$($_.Ok) $($_.Quelle) $($_.Detail)" }) -join ' | ')") }
+    $wl = @(Get-A5Wandmasse $itemsF @())
+    if ($wl.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      ohne Maßlinien: Wandmaße nicht nachprüfbar, keine Meldung") } else { $falsch++; $zeilen.Add("[FALSCH]       ohne Maßlinien: $($wl.Count) Ergebnisse") }
+    if (@(Get-AktivePruefungen 'entwurf' | Where-Object { $_ -like 'A5*' }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      A5 läuft nur in der Werkplanung") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       A5 ist auch im Entwurf aktiv") }
 }
 # Selbsttest KI-Anbindung: ohne echten Aufruf (die KI wird hier nur nachgestellt, es wird nichts gesendet).
 if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count -gt 0) {

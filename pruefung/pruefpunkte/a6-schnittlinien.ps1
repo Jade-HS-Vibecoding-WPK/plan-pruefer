@@ -114,7 +114,7 @@ function Get-A6Pruefung($items, $dreiecke) {
 }
 
 function Get-A6Schnittlinien($items, $pdfPfad) {
-    Get-A6Pruefung $items @(Get-PdfDreiecke $pdfPfad)
+    Get-A6Pruefung $items @(Get-PdfDreieckeCached $pdfPfad)
 }
 
 $script:Pruefungen += @{

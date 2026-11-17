@@ -19,6 +19,9 @@ Stand: Entwurf, noch von euch gegenzulesen. Die Plankopf-Prüfung entfällt, sie
 |-----|-----------|------------------|---------|---------------|
 | A1 | Nordpfeil | Ist ein Nordpfeil im Plan **vorhanden**? (Die Richtung wird nicht geprüft.) | KI (Bild) | mittel |
 | A2 | Bemaßung | Gesamtmaße, Außenmaßketten (alle Seiten), Raummaße innen, Öffnungsmaße (Fenster und Türen) | PDF-Text mit Positionen, Geometrie, ggf. KI | **schwer** |
+| A2M | Maßzahl zu Maßlinie | **gebaut** (nur Werkplanung, ohne KI): Jede Maßzahl in Metern stimmt mit der Länge ihres Maßlinien-Stücks überein (Länge mal Maßstab, 1 cm Toleranz, Kettenenden bis 6 cm kürzer erlaubt). Gilt für Außen- und Innenketten. Offen: Maßlinie ohne Zahl, fehlende ganze Innenketten |
+| A8 | Eingangspfeil | **gebaut** (Entwurf und Werk, ohne KI): Pfeilspitze (zwei gleich lange schräge Striche mit waagrechter oder senkrechter Winkelhalbierender) in der Nähe einer Tür und auf sie zeigend. Farbe, Füllung und Größe egal (5 Beispielformen in `testplaene/Eingangspfeile.pdf`). Grenze: andere Pfeile nahe einer Tür zählen mit |
+| A5 | Flächenplausibilität | **gebaut** (nur Werkplanung): Stufe 1 Fläche mindestens 0,5 m², Umfang passt zur Fläche, Summe der Räume gegen Gebäuderechteck. **Stufe 2:** NGF und RU gegen die Wand-Maßketten (Zahlen, die genau zu ihrer Maßlinie passen), ab 3 Prozent gelber Hinweis, über 15 Prozent oder ohne passende Kette nicht nachprüfbar |
 | A3 | Raumbezeichnungen | Jeder Raum hat einen Namen | PDF-Text, für Räume ohne Beschriftung Geometrie oder KI | mittel |
 | A4 | Raumflächen | Zu jedem Raum steht eine Fläche in m² | PDF-Text | leicht |
 | A5 | Flächenangabe plausibel | Die Fläche passt zu den Raummaßen | PDF-Text und Rechnung | mittel bis schwer |
@@ -101,13 +104,16 @@ Jeder Punkt wird einzeln gebaut, getestet und committet. Dazu brauchen wir pro P
 | A11 | Planinhalt beschriftet | **gebaut** (nur Werkplanung, ohne KI): Bezeichnung "GRUNDRISS ... M 1:50" vorhanden, Maßstab 1:50, Maßstab im Plankopf gleich dem der Bezeichnung. Noch nicht: Legende, weitere Planinhalte |
 | A9 | Achsen | **gebaut** (nur Werkplanung, ohne KI): Achsraster aus Linien erkannt, also mehrere Strichpunkt-/Strichlinien waagrecht und/oder senkrecht (aus den PDF-Vektordaten). Buchstaben/Zahlen an den Achsen werden nur angezeigt, ihr Fehlen ist kein Fehler. Befund: kein Raster oder nur eine einzelne Linie |
 | A2 | Bemaßung (Stufen 2a und 2b) | **gebaut** (nur Werkplanung, ohne KI), Vorgabe DIN 1356-1/DIN 406: pro Seite Maßkette vorhanden, Gesamtmaß vorhanden und **gleich der Summe der Öffnungsmaßkette**, "Achse zu Achse" passt zu den Achsabständen (aus den Linien berechnet), Schreibweise (unter 1 m in cm, halbe cm hochgestellt). Ohne Achsraster nicht geprüft. Offen: Achse zu Bauteil, Innenmaße der Wände (2d), Doppelbemaßung, Öffnungshöhen |
+| A2M | Maßzahl zu Maßlinie | **gebaut** (nur Werkplanung, ohne KI): Jede Maßzahl in Metern stimmt mit der Länge ihres Maßlinien-Stücks überein (Länge mal Maßstab, 1 cm Toleranz, Kettenenden bis 6 cm kürzer erlaubt). Gilt für Außen- und Innenketten. Offen: Maßlinie ohne Zahl, fehlende ganze Innenketten |
+| A8 | Eingangspfeil | **gebaut** (Entwurf und Werk, ohne KI): Pfeilspitze (zwei gleich lange schräge Striche mit waagrechter oder senkrechter Winkelhalbierender) in der Nähe einer Tür und auf sie zeigend. Farbe, Füllung und Größe egal (5 Beispielformen in `testplaene/Eingangspfeile.pdf`). Grenze: andere Pfeile nahe einer Tür zählen mit |
+| A5 | Flächenplausibilität | **gebaut** (nur Werkplanung): Stufe 1 Fläche mindestens 0,5 m², Umfang passt zur Fläche, Summe der Räume gegen Gebäuderechteck. **Stufe 2:** NGF und RU gegen die Wand-Maßketten (Zahlen, die genau zu ihrer Maßlinie passen), ab 3 Prozent gelber Hinweis, über 15 Prozent oder ohne passende Kette nicht nachprüfbar |
 | A3 | Raumbezeichnungen | **gebaut** (Entwurf und Werk). Grenze: Ein Raum ohne Name **und** ohne Fläche steht nicht im PDF-Text und wird nicht gefunden (dafür bräuchte es Geometrie oder KI) |
 | A3K | Raum ohne Name und Fläche (KI) | **gebaut, Fundtest 17.11. gemischt.** Mit dem kleinen Modell und PDF-Eingabe wird der unbeschriftete Raum **nicht** gefunden (die KI zählt nur beschriftete Räume). Mit dem Bild, der Liste der schon bekannten Räume in der Frage und dem stärkeren Modell `gemini-3.8-flash` wurde das Büro in `04_A3K_fehler.pdf` einmal **gefunden**, spätere Läufe liefen aber ins Zeitlimit. Läuft nur mit eingeschalteter KI, Ergebnis ist ein Hinweis |
 | A7 | Höhenangaben (Fußbodenhöhe) | **gebaut** (Entwurf und Werk): mindestens eine Höhenkote wie ±0,00 im Plan, ohne KI |
 | A7K | Höhenangabe an Raumebenen (KI) | **entfällt (Entscheidung Team 17.11.).** Die KI konnte den Ebenenwechsel nicht zuverlässig erkennen (das kleine Modell findet die fehlende Kote nicht, das stärkere Modell erreicht das Gratis-Limit). A7 prüft nur noch, ob **ein Höhenmaß im Plan enthalten ist**. Die Pläne  5_A7K_fehler.pdf und  5_A7K_okay.pdf bleiben im Ordner, der Fehlerplan wird übersprungen |
 | A1 | Nordpfeil | **gebaut** (Entwurf und Werk, ohne KI): ein einzelnes großes "N" als Text im Plan. Grenze: Ein Nordpfeil ohne Buchstaben wird nicht erkannt (unberechtigter Befund), ein "N" ohne Zeichnung geht durch |
 | A6 | Schnittlinien (Dreiecke und Buchstaben) | **gebaut, ohne KI** (Entwurf und Werk): Die Dreiecke an den Enden werden als Vektorformen aus dem PDF gelesen. Geprüft wird: Schnittlinie vorhanden, an beiden Enden ein Dreieck, beide in dieselbe Richtung, Buchstaben (falls vorhanden) an beiden Enden gleich. **Schnittlinien ohne Buchstaben sind in Ordnung** (Korrektur vom Team 17.11.). Grenze: nur senkrechte oder waagerechte Linien mit rechtwinklig angeordneten Dreiecken, Schnitt-Dreiecke ab 8 Punkt Kante |
-| A5, A8 (und A2 Stufe 2d) | | noch nicht gebaut |
+| A2 Stufe 2d (Innenmaße, Achse zu Bauteil) | | noch nicht gebaut |
 
 ## Entschieden
 
@@ -136,8 +142,8 @@ Jeder Punkt wird einzeln gebaut, getestet und committet. Dazu brauchen wir pro P
 | 3 | **A11 Planinhalt beschriftet** ✔ gebaut 17.11. | "Grundriss ... M 1:50" steht im Plan, Maßstab stimmt zum Plankopf | Text | sehr einfach, trifft G.3.6 |
 | 4 | **A9 Achsen** ✔ gebaut 17.11. (nur Vorhandensein) | Achsen A bis E und 1 bis 3 an beiden Enden bezeichnet, keine Lücke in der Reihenfolge, Achsmaßketten vorhanden | Text, Geometrie | baut auf dem Wissen über Buchstaben und Kreise auf |
 | 5 | **A2 Bemaßung** (nicht vergessen, siehe unten) | Maßketten vollständig und richtig | Text, Geometrie | größter Brocken, braucht die Vorarbeit aus Schritt 4 |
-| 6 | **A8 Eingangspfeil** | Der Eingangspfeil ist vorhanden | Geometrie (großes Dreieck, Farbe rot) | Das Dreieck ist im PDF schon gefunden, aber nur im Werkplan sichtbar |
-| 7 | **A5 Flächenplausibilität** | Fläche passt zu Raummaßen (der Werkplan enthält jetzt den Umfang RU, damit lässt sich rechnen) | Text und Rechnung | erst möglich, wenn A4 Werk steht |
+| 6 | **A8 Eingangspfeil** ✔ gebaut 17.11. | Der Eingangspfeil ist vorhanden | Geometrie (großes Dreieck, Farbe rot) | Das Dreieck ist im PDF schon gefunden, aber nur im Werkplan sichtbar |
+| 7 | **A5 Flächenplausibilität** ✔ gebaut 17.11. | Fläche passt zu Raummaßen (der Werkplan enthält jetzt den Umfang RU, damit lässt sich rechnen) | Text und Rechnung | erst möglich, wenn A4 Werk steht |
 | 8 | A3K (KI), Plankopf-Frage A12 | unbeschrifteter Raum, "Plankopf vorhanden" | KI, Text | experimentell bzw. Entscheidung offen |
 
 ### Bemaßung (A2) im Detail, wird ausdrücklich nicht vergessen

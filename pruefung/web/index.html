@@ -257,6 +257,7 @@
       const inhalt = el('div');
       const kopfzeile = el('div', 'angabe', b.angabe);
       if (b.quelle === 'ki') kopfzeile.append(el('span', 'kitag', 'KI-Hinweis'));
+      if (b.quelle === 'hinweis') kopfzeile.append(el('span', 'kitag', 'Hinweis'));
       inhalt.append(kopfzeile);
       if (b.ok) {
         inhalt.append(el('div', 'wert', b.wert));

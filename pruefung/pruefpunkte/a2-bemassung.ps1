@@ -191,6 +191,21 @@ function Get-A2Massketten($items, $linien) {
     $ergebnisse | Sort-Object { $_.Ok }
 }
 
+# Gesamtmaße des Gebäudes (Breite aus der Kette oben oder unten, Tiefe links oder rechts). Für A5 (Flächenplausibilität).
+# Liefert $null, wenn kein Achsraster da ist, sonst Breite und Tiefe in Metern (0, wenn nicht gefunden).
+function Get-A2Gesamtmasse($items, $linien) {
+    $kern = Get-A2Kern $items $linien
+    if (-not $kern) { return $null }
+    $werte = @{}
+    foreach ($seite in 'oben', 'unten', 'links', 'rechts') {
+        $zeilen = @(Get-A2Zeilen @(Get-A2Zahlen $items $kern $seite))
+        $einzeln = @($zeilen | Where-Object { $_.Anzahl -eq 1 -and $_.Zahlen[0].Art -eq 'm' } | Sort-Object { $_.Zahlen[0].Wert } -Descending)
+        $werte[$seite] = if ($einzeln.Count -gt 0) { $einzeln[0].Zahlen[0].Wert } else { 0.0 }
+    }
+    $b = if ($werte['oben'] -gt 0) { $werte['oben'] } else { $werte['unten'] }
+    $tt = if ($werte['links'] -gt 0) { $werte['links'] } else { $werte['rechts'] }
+    [pscustomobject]@{ Breite = $b; Tiefe = $tt }
+}
 $script:Pruefungen += @{
     Id     = 'A2'
     Name   = 'Bemaßung'

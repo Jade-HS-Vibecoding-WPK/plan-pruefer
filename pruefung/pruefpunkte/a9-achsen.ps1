@@ -20,7 +20,16 @@
 #>
 
 # Findet Achsenlinien in den Strichen eines Plans. Liefert Richtung ('senkrecht'/'waagrecht'), Lage, Von, Bis, Anzahl.
+# Merkt sich das Ergebnis für dieselben Linien (A2, A5 und A9 brauchen die Achsen, die Suche dauert einige Sekunden)
+$script:AchsenCache = @{}
 function Get-AchsenLinien($linien) {
+    $liste = @($linien)
+    $schluessel = if ($liste.Count -gt 0) { "$($liste.Count)|$($liste[0].X1)|$($liste[0].Y1)|$($liste[$liste.Count - 1].X2)|$($liste[$liste.Count - 1].Y2)" } else { 'leer' }
+    if (-not $script:AchsenCache.ContainsKey($schluessel)) { $script:AchsenCache = @{}; $script:AchsenCache[$schluessel] = @(Get-AchsenLinienNeu $liste) }
+    $script:AchsenCache[$schluessel]
+}
+
+function Get-AchsenLinienNeu($linien) {
     $achsen = @()
     foreach ($richt in 'senkrecht', 'waagrecht') {
         $sel = if ($richt -eq 'senkrecht') { @($linien | Where-Object { [math]::Abs($_.X1 - $_.X2) -lt 0.05 }) } else { @($linien | Where-Object { [math]::Abs($_.Y1 - $_.Y2) -lt 0.05 }) }
