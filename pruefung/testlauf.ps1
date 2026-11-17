@@ -359,6 +359,164 @@ if ($werkOk -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A10' }).Count 
     if (@(Get-AktivePruefungen 'entwurf' | Where-Object { $_ -like 'A10*' }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      A10 läuft nur in der Werkplanung") }
     else { $falsch++; $zeilen.Add("[FALSCH]       A10 ist auch im Entwurf aktiv") }
 }
+# Selbsttest A11: Planinhalt beschriftet (Fehler im Speicher nachgestellt)
+if ($werkOk -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A11' }).Count -gt 0) {
+    $zeilen.Add("")
+    $zeilen.Add("== Selbsttest A11: Planinhalt beschriftet")
+    $itemsC = @(Get-PdfTextItems $werkOk.FullName)
+    $r = @(Get-A11Planinhalt $itemsC)
+    if (@($r | Where-Object { -not $_.Ok }).Count -eq 0 -and @($r | Where-Object { $_.Angabe -eq 'Maßstab im Plankopf' -and $_.Ok }).Count -eq 1) { $richtig++; $zeilen.Add("[richtig]      Musterplan: Bezeichnung mit 1:50 da, Plankopf stimmt überein") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Musterplan: $(($r | ForEach-Object { "$($_.Angabe)=$($_.Ok) $($_.Detail)" }) -join ' | ')") }
+
+    $titelC = $itemsC | Where-Object { $_.T -ceq 'GRUNDRISS' -and $_.X -lt 200 } | Select-Object -First 1
+    $skalaC = $itemsC | Where-Object { $_.T -eq '1:50' -and [math]::Abs($_.Y - $titelC.Y) -le 3 } | Select-Object -First 1
+    $b = @(Get-A11Planinhalt @($itemsC | Where-Object { $_ -ne $titelC }) | Where-Object { -not $_.Ok })
+    if ($b.Count -eq 1 -and $b[0].Angabe -eq 'Planbezeichnung') { $richtig++; $zeilen.Add("[richtig]      Wort GRUNDRISS fehlt: Befund Planbezeichnung") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       ohne GRUNDRISS: $($b.Count) Befunde") }
+    $b = @(Get-A11Planinhalt @($itemsC | Where-Object { $_ -ne $skalaC }) | Where-Object { -not $_.Ok })
+    if ($b.Count -eq 1 -and $b[0].Angabe -eq 'Planbezeichnung') { $richtig++; $zeilen.Add("[richtig]      Maßstab in der Bezeichnung fehlt: Befund") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       ohne Maßstab in der Bezeichnung: $($b.Count) Befunde") }
+
+    $s100 = @($itemsC | ForEach-Object { if ($_ -eq $skalaC) { [pscustomobject]@{ X = $_.X; Y = $_.Y; T = '1:100' } } else { $_ } })
+    $b = @(Get-A11Planinhalt $s100 | Where-Object { -not $_.Ok })
+    if (@($b | Where-Object { $_.Angabe -eq 'Maßstab' }).Count -eq 1 -and @($b | Where-Object { $_.Angabe -eq 'Maßstab im Plankopf' }).Count -eq 1) { $richtig++; $zeilen.Add("[richtig]      Bezeichnung 1:100 im Werkplan: 'nicht 1:50' und 'passt nicht zum Plankopf'") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Bezeichnung 1:100: $(($b | ForEach-Object { $_.Angabe }) -join ', ')") }
+
+    $kopfC = $itemsC | Where-Object { $_.T -eq '1:50' -and $_.X -gt 1200 } | Select-Object -First 1
+    $kopf20 = @($itemsC | ForEach-Object { if ($_ -eq $kopfC) { [pscustomobject]@{ X = $_.X; Y = $_.Y; T = '1:20' } } else { $_ } })
+    $b = @(Get-A11Planinhalt $kopf20 | Where-Object { -not $_.Ok })
+    if ($b.Count -eq 1 -and $b[0].Angabe -eq 'Maßstab im Plankopf') { $richtig++; $zeilen.Add("[richtig]      Plankopf 1:20, Plan 1:50: ein Befund beim Plankopf") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Plankopf 1:20: $($b.Count) Befunde") }
+
+    $b = @(Get-A11Planinhalt @($itemsC | Where-Object { $_ -ne $kopfC }) | Where-Object { -not $_.Ok })
+    if ($b.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Maßstab im Plankopf nicht lesbar: Vergleich wird übersprungen, kein Befund") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       ohne Kopf-Maßstab: $($b.Count) Befunde") }
+
+    if (@(Get-AktivePruefungen 'entwurf' | Where-Object { $_ -like 'A11*' }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      A11 läuft nur in der Werkplanung") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       A11 ist auch im Entwurf aktiv") }
+}
+# Selbsttest A9: Achsraster aus Strichpunktlinien (Fehler im Speicher nachgestellt)
+if ($werkOk -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A9' }).Count -gt 0) {
+    $zeilen.Add("")
+    $zeilen.Add("== Selbsttest A9: Achsen (Strichpunktlinien)")
+    $itemsD = @(Get-PdfTextItems $werkOk.FullName)
+    $linienD = @(Get-PdfLinien $werkOk.FullName)
+    $achsD = @(Get-AchsenLinien $linienD)
+    $senkD = @($achsD | Where-Object { $_.Richtung -eq 'senkrecht' }); $waagD = @($achsD | Where-Object { $_.Richtung -eq 'waagrecht' })
+    $r = @(Get-A9Achsen $itemsD $linienD)
+    if ($senkD.Count -eq 5 -and $waagD.Count -eq 3 -and $r.Count -eq 1 -and $r[0].Ok -and $r[0].Wert -match 'A, B, C, D, E') { $richtig++; $zeilen.Add("[richtig]      Musterplan: 5 senkrechte und 3 waagrechte Achsenlinien, Bezeichnungen A bis E und 1 bis 3 gefunden") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Musterplan: senkrecht=$($senkD.Count), waagrecht=$($waagD.Count), $(($r | ForEach-Object { "$($_.Ok) $($_.Wert) $($_.Detail)" }) -join ' | ')") }
+
+    function Entferne-Achsen($linien, $achsen) {
+        $linien | Where-Object {
+            $l = $_
+            -not (@($achsen | Where-Object {
+                        ($_.Richtung -eq 'senkrecht' -and [math]::Abs($l.X1 - $l.X2) -lt 0.05 -and [math]::Abs($l.X1 - $_.Lage) -lt 0.2) -or
+                        ($_.Richtung -eq 'waagrecht' -and [math]::Abs($l.Y1 - $l.Y2) -lt 0.05 -and [math]::Abs($l.Y1 - $_.Lage) -lt 0.2)
+                    }).Count -gt 0)
+        }
+    }
+
+    # Achsbezeichnungen (Buchstaben und Ziffern) fehlen: kein Fehler, die Linien zählen
+    $ohneNamen = @($itemsD | Where-Object { $_.T -cnotmatch '^[A-Z1-9]$' })
+    $b2 = @(Get-A9Achsen $ohneNamen $linienD)
+    if ($b2[0].Ok -and $b2[0].Wert -match 'ohne Bezeichnungen') { $richtig++; $zeilen.Add("[richtig]      alle Achsbuchstaben und -ziffern fehlen: kein Fehler (die Linien zählen)") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       ohne Bezeichnungen: $($b2[0].Ok) $($b2[0].Wert) $($b2[0].Detail)") }
+
+    # Nur Buchstaben fehlen / nur Ziffern fehlen: kein Fehler
+    $ohneB = @($itemsD | Where-Object { $_.T -cnotmatch '^[A-Z]$' }); $ohneZ = @($itemsD | Where-Object { $_.T -notmatch '^[1-9]$' })
+    if ((Get-A9Achsen $ohneB $linienD)[0].Ok -and (Get-A9Achsen $ohneZ $linienD)[0].Ok) { $richtig++; $zeilen.Add("[richtig]      nur Buchstaben oder nur Ziffern fehlen: kein Fehler") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Buchstaben oder Ziffern allein entfernt: Befund") }
+
+    # Nur ein Raster in einer Richtung (waagrecht oder senkrecht): in Ordnung
+    $nurSenk = @(Entferne-Achsen $linienD $waagD); $nurWaag = @(Entferne-Achsen $linienD $senkD)
+    $rs = @(Get-A9Achsen $itemsD $nurSenk); $rw = @(Get-A9Achsen $itemsD $nurWaag)
+    if ($rs[0].Ok -and $rs[0].Wert -match '^5 senkrechte, 0 waag' -and $rw[0].Ok -and $rw[0].Wert -match '^0 senkrechte, 3 waag') { $richtig++; $zeilen.Add("[richtig]      nur senkrechte oder nur waagrechte Achsen: in Ordnung") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       eine Richtung: $($rs[0].Wert) | $($rw[0].Wert)") }
+
+    # Nur eine einzelne Achsenlinie: Befund
+    $eine = @(Entferne-Achsen $linienD @($achsD | Where-Object { $_ -ne $senkD[0] }))
+    $re = @(Get-A9Achsen $itemsD $eine)
+    if (-not $re[0].Ok -and $re[0].Detail -match 'nur eine einzelne' -and $null -ne $re[0].X) { $richtig++; $zeilen.Add("[richtig]      nur eine einzelne Achsenlinie: Befund mit Position") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       eine Linie: $($re[0].Ok) $($re[0].Detail)") }
+
+    # Alle Achsenlinien fehlen (die Bezeichnungen bleiben stehen): Befund
+    $keine = @(Entferne-Achsen $linienD $achsD)
+    $rk = @(Get-A9Achsen $itemsD $keine)
+    if (-not $rk[0].Ok -and $rk[0].Detail -match 'kein Achsraster') { $richtig++; $zeilen.Add("[richtig]      alle Achsenlinien fehlen (nur Bezeichnungen): Befund 'kein Achsraster'") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       ohne Linien: $($rk[0].Ok) $($rk[0].Detail)") }
+    $rl = @(Get-A9Achsen $itemsD @())
+    if (-not $rl[0].Ok) { $richtig++; $zeilen.Add("[richtig]      gar keine Linien im Plan: Befund") } else { $falsch++; $zeilen.Add("[FALSCH]       ohne jede Linie kein Befund") }
+
+    # Reine Strichlinien (ohne Punkte): zwei lange regelmäßige Linien zählen, kurze oder unregelmäßige nicht
+    function Neue-Strichlinie($x, $y0, $anzahl, $strich, $luecke) { for ($i = 0; $i -lt $anzahl; $i++) { $a = $y0 + $i * ($strich + $luecke); [pscustomobject]@{ X1 = $x; Y1 = $a; X2 = $x; Y2 = $a + $strich; Laenge = $strich } } }
+    $zwei = @((Neue-Strichlinie 100 100 50 12 5) + (Neue-Strichlinie 200 100 50 12 5))
+    $rz = @(Get-A9Achsen @() $zwei)
+    if ($rz[0].Ok) { $richtig++; $zeilen.Add("[richtig]      zwei lange reine Strichlinien (ohne Punkte) zählen als Raster") } else { $falsch++; $zeilen.Add("[FALSCH]       Strichlinien: $($rz[0].Detail)") }
+    $kurz = @((Neue-Strichlinie 100 100 12 12 5) + (Neue-Strichlinie 200 100 12 12 5))
+    $durchgezogen = @((Neue-Strichlinie 100 100 5 150 5) + (Neue-Strichlinie 200 100 5 150 5))
+    $unregel = @(); foreach ($x in 100, 200) { $y = 100; foreach ($i in 1..40) { $s = 3 + (($i * 7) % 11); $unregel += [pscustomobject]@{ X1 = $x; Y1 = $y; X2 = $x; Y2 = $y + $s; Laenge = $s }; $y += $s + 4 } }
+    if (-not (Get-A9Achsen @() $kurz)[0].Ok -and -not (Get-A9Achsen @() $durchgezogen)[0].Ok -and -not (Get-A9Achsen @() $unregel)[0].Ok) { $richtig++; $zeilen.Add("[richtig]      kurze, durchgezogene und unregelmäßige Linien zählen nicht als Achsen") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Sonderfälle (kurz/durchgezogen/unregelmäßig) wurden als Achsen erkannt") }
+
+    if (@(Get-AktivePruefungen 'entwurf' | Where-Object { $_ -like 'A9*' }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      A9 läuft nur in der Werkplanung") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       A9 ist auch im Entwurf aktiv") }
+}
+# Selbsttest A2: Bemaßung (Fehler im Speicher nachgestellt)
+if ($werkOk -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A2' }).Count -gt 0) {
+    $zeilen.Add("")
+    $zeilen.Add("== Selbsttest A2: Bemaßung (Maßketten, Gesamtmaß, Achsmaße, Schreibweise)")
+    $itemsM = @(Get-PdfTextItems $werkOk.FullName)
+    $linienM = @(Get-PdfLinienCached $werkOk.FullName)
+    $kernM = Get-A2Kern $itemsM $linienM
+    $r = @(Get-A2Massketten $itemsM $linienM)
+    if ($kernM.Quelle -eq 'Achsraster' -and $r.Count -eq 4 -and @($r | Where-Object { -not $_.Ok }).Count -eq 0 -and @($r | Where-Object { $_.Wert -match 'Gesamtmaß 15,99 = Summe' }).Count -eq 2 -and @($r | Where-Object { $_.Wert -match 'Gesamtmaß 13,49 = Summe' }).Count -eq 2) { $richtig++; $zeilen.Add("[richtig]      Musterplan: alle vier Seiten in Ordnung (Gesamtmaß 15,99 und 13,49 gleich Summe, Achsmaße stimmen)") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Musterplan: $(($r | ForEach-Object { "$($_.Angabe)=$($_.Ok) $($_.Detail)" }) -join ' | ')") }
+
+    function Ersetze-Text($alle, $item, $neuerText) { @($alle | ForEach-Object { if ($_ -eq $item) { [pscustomobject]@{ X = $_.X; Y = $_.Y; T = $neuerText } } else { $_ } }) }
+    function Nur-Befund($erwartetSeite, $erwartetText, $items2, $linien2, $name) {
+        $b = @(Get-A2Massketten $items2 $linien2 | Where-Object { -not $_.Ok })
+        if ($b.Count -eq 1 -and $b[0].Angabe -eq "Maßkette $erwartetSeite" -and $b[0].Detail -match $erwartetText -and $null -ne $b[0].X -and $null -ne $b[0].Y) { $script:richtig++; $script:zeilen.Add("[richtig]      $name") }
+        else { $script:falsch++; $script:zeilen.Add("[FALSCH]       $name -> $($b.Count) Befunde ($(($b | ForEach-Object { "$($_.Angabe): $($_.Detail)" }) -join ' | '))") }
+    }
+    $oben133 = $itemsM | Where-Object { $_.T -eq '1,82' -and [math]::Abs($_.Y - 133) -lt 3 } | Select-Object -First 1
+    $oben105 = $itemsM | Where-Object { $_.T -eq '15,99' -and [math]::Abs($_.Y - 105) -lt 3 } | Select-Object -First 1
+    $oben77 = $itemsM | Where-Object { $_.T -eq '5,08' -and [math]::Abs($_.Y - 77) -lt 3 } | Select-Object -First 1
+
+    Nur-Befund 'oben' 'stimmt mit keiner Maßkette überein' (Ersetze-Text $itemsM $oben133 '1,83') $linienM 'Teilmaß 1,82 -> 1,83 in der Öffnungsmaßkette oben: Gesamtmaß stimmt nicht mehr, ein Befund'
+    Nur-Befund 'oben' 'stimmt mit keiner Maßkette überein' (Ersetze-Text $itemsM $oben105 '15,89') $linienM 'Gesamtmaß 15,99 -> 15,89 oben: ein Befund'
+    Nur-Befund 'oben' 'fehlt das Gesamtmaß' @($itemsM | Where-Object { $_ -ne $oben105 }) $linienM 'Gesamtmaß oben fehlt: ein Befund'
+    Nur-Befund 'oben' 'Achse zu Achse' (Ersetze-Text $itemsM $oben77 '5,18') $linienM 'Achsmaß 5,08 -> 5,18 oben: passt nicht zu den Achslinien'
+    $zeile77 = @($itemsM | Where-Object { [math]::Abs($_.Y - 77) -lt 5 -and $_.X -gt 300 -and $_.X -lt 1100 })
+    Nur-Befund 'oben' 'fehlt die Maßkette ''Achse zu Achse''' @($itemsM | Where-Object { $zeile77 -notcontains $_ }) $linienM 'ganze Kette Achse zu Achse oben fehlt: ein Befund'
+
+    # Schreibweise: 78 cm als 0,78 und 1,13 mit 5 mm ohne Hochzahl als 1,135
+    $cm78 = $itemsM | Where-Object { $_.T -eq '78' -and $_.X -lt 200 } | Select-Object -First 1
+    Nur-Befund 'links' 'Schreibweise: Maße unter 1,00 m' (Ersetze-Text $itemsM $cm78 '0,78') $linienM 'Schreibweise 0,78 statt 78 (links): ein Befund'
+    $m113 = $itemsM | Where-Object { $_.T -eq '1,13' -and [math]::Abs($_.Y - 48) -lt 3 } | Select-Object -First 1
+    $hoch113 = $itemsM | Where-Object { $_.T -eq '5' -and [math]::Abs($_.X - ($m113.X + 17)) -lt 3 -and [math]::Abs($_.Y - ($m113.Y - 3.2)) -lt 2 } | Select-Object -First 1
+    if ($m113 -and $hoch113) { Nur-Befund 'oben' 'Halbe Zentimeter stehen hochgestellt' @(Ersetze-Text @($itemsM | Where-Object { $_ -ne $hoch113 }) $m113 '1,135') $linienM 'Schreibweise 1,135 statt 1,13 mit Hochzahl (oben): ein Befund' }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Hochzahl neben 1,13 nicht gefunden") }
+
+    # Eine ganze Seite fehlt
+    foreach ($seite in 'oben', 'unten', 'links', 'rechts') {
+        $ohne = @($itemsM | Where-Object { -not (($_.T -match '^\d{1,3}[.,]\d{2,3}$' -or $_.T -match '^\d{1,2}$') -and (Test-A2Seite $_ $kernM $seite)) })
+        Nur-Befund $seite 'keine Maßkette' $ohne $linienM "Maßkette $seite ganz entfernt: genau ein Befund"
+    }
+
+    # Nur eine Richtung hat Achsen, die andere nicht (Achsen links/rechts entfernt): kein Befund bei Achse zu Achse für die fehlende Richtung
+    # Ohne Achsraster: nicht geprüft, aber kein falscher Alarm
+    $r2 = @(Get-A2Massketten $itemsM @())
+    if ($r2.Count -eq 1 -and $r2[0].Ok -and $r2[0].Wert -eq 'nicht geprüft') { $richtig++; $zeilen.Add("[richtig]      ohne Achsraster: 'nicht geprüft' statt falschem Alarm") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       ohne Achsraster: $(($r2 | ForEach-Object { "$($_.Angabe)=$($_.Ok)" }) -join ', ')") }
+
+    # BRH-Werte (0,00) im unteren Rand zählen nicht als Maßzahlen (kein falscher Schreibweise-Befund)
+    $brhUnten = @($itemsM | Where-Object { $_.T -cmatch '^BRH' -and $_.Y -gt 960 }).Count
+    if ($brhUnten -gt 0) { $richtig++; $zeilen.Add("[richtig]      BRH-Werte unten ($brhUnten Stück) im Musterplan werden nicht als Maßzahlen gezählt") }
+
+    if (@(Get-AktivePruefungen 'entwurf' | Where-Object { $_ -like 'A2*' }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      A2 läuft nur in der Werkplanung") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       A2 ist auch im Entwurf aktiv") }
+}
 # Selbsttest KI-Anbindung: ohne echten Aufruf (die KI wird hier nur nachgestellt, es wird nichts gesendet).
 if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count -gt 0) {
     $zeilen.Add("")
