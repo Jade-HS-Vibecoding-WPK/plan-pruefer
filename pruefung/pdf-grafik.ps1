@@ -120,6 +120,7 @@ function Get-PdfDreiecke([string]$Path, [double]$MinKante = 4, [double]$MaxKante
                             $k2 = [math]::Sqrt([math]::Pow($pt[1].X - $pt[2].X, 2) + [math]::Pow($pt[1].Y - $pt[2].Y, 2))
                             $k3 = [math]::Sqrt([math]::Pow($pt[2].X - $pt[0].X, 2) + [math]::Pow($pt[2].Y - $pt[0].Y, 2))
                             $kante = [math]::Max($k1, [math]::Max($k2, $k3))
+                            $script:GrafikStat.Punkte["DREIECK kante=$([math]::Round($kante,1))"]++
                             if ($kante -ge $MinKante -and $kante -le $MaxKante) {
                                 [pscustomobject]@{
                                     P1 = $pt[0]; P2 = $pt[1]; P3 = $pt[2]
