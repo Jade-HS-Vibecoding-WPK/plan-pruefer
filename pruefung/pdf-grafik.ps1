@@ -26,11 +26,22 @@ function Get-DreieckRichtung($p) {
     return 'schräg'
 }
 
+# Seitengröße des PDFs in Punkt (Breite, Höhe). Fehlt die Angabe, gilt A3 quer.
+function Get-PdfSeitengroesse([string]$Path) {
+    $text = [System.Text.Encoding]::GetEncoding(28591).GetString([System.IO.File]::ReadAllBytes($Path))
+    $mb = [regex]::Match($text, '/MediaBox\s*\[\s*[\d.]+\s+[\d.]+\s+(?<w>[\d.]+)\s+(?<h>[\d.]+)\s*\]')
+    if ($mb.Success) { return [pscustomobject]@{ Breite = [double]::Parse($mb.Groups['w'].Value, $script:GrafikInv); Hoehe = [double]::Parse($mb.Groups['h'].Value, $script:GrafikInv) } }
+    [pscustomobject]@{ Breite = 1190.55; Hoehe = 841.89 }
+}
+
 function Get-PdfDreiecke([string]$Path, [double]$MinKante = 4, [double]$MaxKante = 60) {
-    $script:GrafikStat = @{ Streams = 0; Folge = 0; Fuellungen = 0; Punkte = @{} }
     $latin = [System.Text.Encoding]::GetEncoding(28591)
     $bytes = [System.IO.File]::ReadAllBytes($Path)
     $text = $latin.GetString($bytes)
+    # Seitenhöhe: die Y-Achse der Pfade zeigt nach oben, die der Textstücke (pdf-text.ps1) nach unten. Wir richten sie gleich aus.
+    $seitenHoehe = 841.89
+    $mb = [regex]::Match($text, '/MediaBox\s*\[\s*[\d.]+\s+[\d.]+\s+[\d.]+\s+(?<h>[\d.]+)\s*\]')
+    if ($mb.Success) { $seitenHoehe = [double]::Parse($mb.Groups['h'].Value, $script:GrafikInv) }
     $streamRx = [regex]'stream\r?\n'
     # Zeichenketten und Namen werden übersprungen. Befehle stehen in diesem PDF ohne Leerzeichen hintereinander
     # (zum Beispiel "cmqq2.83465"), deshalb werden zusammenhängende Buchstaben anschließend in Befehle zerlegt.
@@ -74,12 +85,10 @@ function Get-PdfDreiecke([string]$Path, [double]$MinKante = 4, [double]$MaxKante
                 $rest = $rest.Substring($treffer.Length)
             }
         }
-
-        $script:GrafikStat.Streams++; $script:GrafikStat.Folge += $folge.Count
         foreach ($element in $folge) {
             if ($element -is [double]) { $zahlen.Add($element); continue }
             $op = [string]$element
-            switch ($op) {
+            switch -CaseSensitive ($op) {
                 'q' { $stack.Push($ctm.Clone()) }
                 'Q' { if ($stack.Count -gt 0) { $ctm = $stack.Pop() } }
                 'cm' {
@@ -107,20 +116,18 @@ function Get-PdfDreiecke([string]$Path, [double]$MinKante = 4, [double]$MaxKante
                         $pfad.Add([pscustomobject]@{ X = $ctm[0] * $x + $ctm[2] * $y + $ctm[4]; Y = $ctm[1] * $x + $ctm[3] * $y + $ctm[5] })
                     }
                 }
-                { $_ -in 'c', 'v', 'y', 're' } { $kurve = $true }
-                { $_ -in 'f', 'F', 'f*', 'B', 'B*', 'b', 'b*' } {
-                    $script:GrafikStat.Fuellungen++
-                    $script:GrafikStat.Punkte["$($pfad.Count)/kurve=$kurve/teil=$teilpfade"]++
+                { $_ -cin 'c', 'v', 'y', 're' } { $kurve = $true }
+                { $_ -cin 'f', 'F', 'f*', 'B', 'B*', 'b', 'b*' } {
                     if (-not $kurve -and $teilpfade -eq 1) {
                         $pt = $pfad.ToArray()
                         # geschlossenes Dreieck: letzter Punkt gleich erster
                         if ($pt.Length -eq 4 -and [math]::Abs($pt[3].X - $pt[0].X) -lt 0.01 -and [math]::Abs($pt[3].Y - $pt[0].Y) -lt 0.01) { $pt = $pt[0..2] }
                         if ($pt.Length -eq 3) {
+                            $pt = @($pt | ForEach-Object { [pscustomobject]@{ X = $_.X; Y = $seitenHoehe - $_.Y } })
                             $k1 = [math]::Sqrt([math]::Pow($pt[0].X - $pt[1].X, 2) + [math]::Pow($pt[0].Y - $pt[1].Y, 2))
                             $k2 = [math]::Sqrt([math]::Pow($pt[1].X - $pt[2].X, 2) + [math]::Pow($pt[1].Y - $pt[2].Y, 2))
                             $k3 = [math]::Sqrt([math]::Pow($pt[2].X - $pt[0].X, 2) + [math]::Pow($pt[2].Y - $pt[0].Y, 2))
                             $kante = [math]::Max($k1, [math]::Max($k2, $k3))
-                            $script:GrafikStat.Punkte["DREIECK kante=$([math]::Round($kante,1))"]++
                             if ($kante -ge $MinKante -and $kante -le $MaxKante) {
                                 [pscustomobject]@{
                                     P1 = $pt[0]; P2 = $pt[1]; P3 = $pt[2]
@@ -133,7 +140,7 @@ function Get-PdfDreiecke([string]$Path, [double]$MinKante = 4, [double]$MaxKante
                     }
                     $pfad.Clear(); $teilpfade = 0; $kurve = $false
                 }
-                { $_ -in 'S', 's', 'n' } { $pfad.Clear(); $teilpfade = 0; $kurve = $false }
+                { $_ -cin 'S', 's', 'n' } { $pfad.Clear(); $teilpfade = 0; $kurve = $false }
                 'h' { }
                 default { }
             }

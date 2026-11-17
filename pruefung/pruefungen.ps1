@@ -21,6 +21,7 @@
 #>
 . "$PSScriptRoot\pdf-text.ps1"
 . "$PSScriptRoot\raumstempel.ps1"
+. "$PSScriptRoot\pdf-grafik.ps1"
 . "$PSScriptRoot\ki\gemini.ps1"
 
 # Ein Ergebnis einer Prüfung.
