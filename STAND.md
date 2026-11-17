@@ -14,6 +14,13 @@ Stand: Ende Montag, 16.11.2026 (Tag 1 von 5). Der Zeitplan steht in [PLAN.md](PL
 - **Testlauf**: `powershell -File pruefung\testlauf.ps1`, aktuell 13 von 13 richtig (ohne echten KI-Aufruf).
 - Plankopf-Prüfung war ein Testlauf und liegt im Archiv (`archiv/plankopf/`). Hochschul-Checklisten (Entwurf, Werk) sind ausgewertet und im Prüfkatalog eingearbeitet.
 
+## Dienstag, 17.11.: dazugekommen
+
+- **A7 Höhenangaben** (Fußbodenhöhe, ohne KI) gebaut.
+- **A7K Höhenangabe an Raumebenen (KI)** gebaut, ebenfalls noch nicht live getestet. Entschieden: Pflicht nur dort, wo die Ebene wechselt.
+- Testlauf: 17 von 17 richtig (ohne echten KI-Aufruf).
+- Für die KI-Live-Tests fehlen noch: Schlüssel in `schluessel.txt`, `04_A3K_fehler.pdf` und `05_A7K_fehler.pdf` in `testplaene/entwurf/`.
+
 ## Eure Aufgaben für morgen
 
 1. **Server neu starten**, damit alles Neue gilt: das schwarze Server-Fenster schließen und `Planpruefer-starten.cmd` doppelklicken. (Der Server läuft zurzeit noch mit altem Stand.)

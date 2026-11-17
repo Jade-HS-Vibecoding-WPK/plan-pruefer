@@ -45,7 +45,7 @@ Doppelklick auf `Planpruefer-starten.cmd`. Das Fenster offen lassen, der Browser
 Manche Prüfungen, zum Beispiel "Raum ohne Name und Fläche", macht eine KI (Google Gemini). Sie ist standardmäßig **aus** und muss bei jedem Upload ausdrücklich eingeschaltet werden.
 
 1. Auf [Google AI Studio](https://aistudio.google.com/apikey) mit einem Google-Konto einen kostenlosen API-Schlüssel erstellen.
-2. Die Datei `schluessel.beispiel.txt` kopieren, die Kopie `schluessel.txt` nennen und den Schlüssel einfügen.
+2. Die Datei `schluessel.beispiel.txt` kopieren, die Kopie `schluessel.txt` nennen und den Schlüssel einfügen. Die App liest auch eine Datei `schluessel.env` oder `.env`. Erlaubt ist nur der Schlüssel in einer Zeile oder die Schreibweise `GEMINI_API_KEY=...`. Der Platzhalter `HIER-DEN-SCHLUESSEL-EINFUEGEN` zählt nicht. Alle diese Dateien stehen in der `.gitignore`.
 3. App neu starten. Auf der Seite ist die KI-Option dann wählbar.
 
 Wichtig:

@@ -88,7 +88,9 @@ Jeder Punkt wird einzeln gebaut, getestet und committet. Dazu brauchen wir pro P
 | A4 | Raumflächen | **gebaut** (Entwurf und Werk, Grundversion: Fläche je Raumstempel). Werk-Zusatz (Umfang, Raumhöhe, Bodenbelag) fehlt noch |
 | A3 | Raumbezeichnungen | **gebaut** (Entwurf und Werk). Grenze: Ein Raum ohne Name **und** ohne Fläche steht nicht im PDF-Text und wird nicht gefunden (dafür bräuchte es Geometrie oder KI) |
 | A3K | Raum ohne Name und Fläche (KI) | **gebaut, aber noch nicht mit der echten KI getestet** (es fehlt der Schlüssel und ein Testplan). Läuft nur, wenn die Nutzerin die KI einschaltet, Ergebnis ist ein Hinweis zur Prüfung durch Menschen |
-| A1, A2, A5 bis A11 | | noch nicht gebaut |
+| A7 | Höhenangaben (Fußbodenhöhe) | **gebaut** (Entwurf und Werk): mindestens eine Höhenkote wie ±0,00 im Plan, ohne KI |
+| A7K | Höhenangabe an Raumebenen (KI) | **gebaut, aber noch nicht mit der echten KI getestet.** Entschieden: Pflicht nur dort, wo die Ebene wechselt (Stufen, Podeste, abgesenkte oder erhöhte Bereiche). Läuft nur mit eingeschalteter KI, Ergebnis ist ein Hinweis |
+| A1, A2, A5, A6, A8 bis A11 | | noch nicht gebaut |
 
 ## Entschieden
 
