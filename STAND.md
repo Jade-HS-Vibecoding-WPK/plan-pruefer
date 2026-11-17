@@ -82,7 +82,21 @@ Stand: Ende Montag, 16.11.2026 (Tag 1 von 5). Der Zeitplan steht in [PLAN.md](PL
 - Hinweise zählen oben getrennt ("1 Fehler offen · 1 Hinweis").
 - Der Plan wird nur angezeigt, wenn pdf.js aus dem Internet geladen werden kann. Ohne Internet bleibt die Liste.
 
-## Eure Aufgaben für morgen
+## Stand Ende Dienstag, 17.11. – hier geht es Mittwoch weiter
+
+**Läuft:** Alle Prüfpunkte der Werk-Reihenfolge sind gebaut (A1 bis A11, dazu A2M und A5 Stufe 2), Testlauf **122 richtig, 0 falsch, 2 übersprungen** (etwa 12 Minuten). Das neue Bento-Design ist fertig und vom Team abgenommen.
+
+**Noch zu tun von euch:** In GitHub Desktop **"Push origin"** klicken (der Demo-Commit liegt nur lokal). Server auf 8080 neu starten (`Planpruefer-starten.cmd`), damit dort das neue Design läuft.
+
+**Ideen zum Verfeinern am Mittwoch:**
+1. Design-Feinschliff nach euren Wünschen (Größen, Texte, wie stark die Markierungen auffallen).
+2. Bemaßung: Maßlinie ohne Zahl melden; fehlende ganze Innenketten über eine gedachte Linie durch die Wände; Zentimeterzahlen (zum Beispiel 49) in A2M mitprüfen.
+3. Frage an euch: Im Musterplan sind die Maßlinien am Kettenende 5 cm kürzer als die Zahl (1,78 gegen 1,73, Gesamtmaß 15,99 gegen 15,94). Gewollt oder Fehler? Zurzeit bis 6 cm toleriert.
+4. A8 Eingangspfeil ist eine Näherung (andere Pfeile nahe einer Tür, zum Beispiel Treppenlauf, zählen mit).
+5. Weitere Werkpläne mit anderem Aufbau als Test, damit die Prüfungen nicht nur zu einem Plan passen; A5-Schwellen daran prüfen.
+6. Tempo (ein Werkplan etwa 40 Sekunden).
+7. Donnerstag 12 Uhr Freeze, danach Poster und Demo.
+## Ältere Aufgabenliste (vom Montag, größtenteils erledigt)
 
 1. **Server neu starten**, damit alles Neue gilt: das schwarze Server-Fenster schließen und `Planpruefer-starten.cmd` doppelklicken. (Der Server läuft zurzeit noch mit altem Stand.)
 2. **KI einrichten** (siehe README, Abschnitt "KI-Prüfung einrichten"):
