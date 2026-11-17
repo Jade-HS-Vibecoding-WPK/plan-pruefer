@@ -5,155 +5,299 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Planprüfer</title>
 <style>
+  /* Farben vom Team: #0F1E3A (Grund), #1E2F4F (Kacheln), #A7B6D0 (Akzent, ruhige Schrift), #FFFFFF (Schrift) */
   :root {
-    --bg: #f2f4f4; --card: #ffffff; --text: #1a1f1f; --muted: #5a6565; --line: #d9dfdf;
-    --accent: #0e6f7a; --accent-soft: #e3f1f2;
-    --ok: #1f7a3d; --ok-bg: #e4f4ea; --bad: #b3261e; --bad-bg: #fbe9e7; --warn-bg: #fff4d6; --warn: #7a5a00;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #121616; --card: #1b2121; --text: #e8eded; --muted: #9aa8a8; --line: #2c3636;
-      --accent: #4fc3cf; --accent-soft: #17302f;
-      --ok: #6fd18b; --ok-bg: #16301f; --bad: #ff8a80; --bad-bg: #3a1c19; --warn-bg: #352c10; --warn: #e6c25c;
-    }
+    --grund: #0F1E3A; --kachel: #1E2F4F; --akzent: #A7B6D0; --weiss: #FFFFFF;
+    --kachel-hell: #263a5f; --linie: rgba(167, 182, 208, .22); --leise: rgba(167, 182, 208, .75);
+    --radius: 22px;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 "Segoe UI", system-ui, sans-serif; }
-  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
-  .kicker { color: var(--accent); letter-spacing: .15em; text-transform: uppercase; font-weight: 700; font-size: 13px; }
-  h1 { font-family: Georgia, serif; font-size: 40px; line-height: 1.15; margin: 4px 0 8px; }
-  .sub { color: var(--muted); margin: 0 0 28px; max-width: 60ch; }
-  fieldset.phase { border: 0; padding: 0; margin: 0 0 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  fieldset.phase legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
-  .phase label { display: block; background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; }
-  .phase label:hover { border-color: var(--accent); }
-  .phase label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
-  .phase input { accent-color: var(--accent); margin-right: 8px; }
-  .phase b { display: inline; }
-  .phase span { color: var(--muted); font-size: 14px; margin-left: 24px; display: block; }
-  .ki { background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; }
-  .ki label { cursor: pointer; display: block; }
-  .ki input { accent-color: var(--accent); margin-right: 8px; }
-  .ki small { display: block; color: var(--muted); margin-left: 24px; font-size: 14px; }
-  .ki.aus { opacity: .6; } .ki.aus label { cursor: not-allowed; }
-  .kitag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--warn-bg); color: var(--warn); margin-left: 8px; vertical-align: 2px; }
-  .meldung { margin: 0; padding: 12px 20px; background: var(--warn-bg); color: var(--warn); font-size: 14px; border-top: 1px solid var(--line); }
-  .drop.gesperrt { opacity: .5; cursor: not-allowed; }
-  .phasen-tag { font-size: 12px; color: var(--muted); font-weight: 600; }
-  @media (max-width: 520px) { fieldset.phase { grid-template-columns: 1fr; } }
-  .drop { display: block; background: var(--card); border: 2px dashed var(--line); border-radius: 14px; padding: 36px 20px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
-  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
-  .drop strong { display: block; font-size: 18px; margin-bottom: 4px; }
-  .drop span { color: var(--muted); font-size: 14px; }
-  .drop input { display: none; }
-  .hinweis { margin-top: 12px; font-size: 14px; color: var(--muted); }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-top: 20px; overflow: hidden; }
-  .card-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--line); }
-  .card-head h2 { font-size: 17px; margin: 0; word-break: break-all; }
-  .badge { font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 999px; }
-  .badge.ok { background: var(--ok-bg); color: var(--ok); }
-  .badge.bad { background: var(--bad-bg); color: var(--bad); }
-  .badge.wait { background: var(--accent-soft); color: var(--accent); }
-  ul.befunde { list-style: none; margin: 0; padding: 0; }
-  ul.befunde li { display: grid; grid-template-columns: 28px 1fr; gap: 4px 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); align-items: start; }
-  ul.befunde li:last-child { border-bottom: 0; }
-  .dot { width: 14px; height: 14px; border-radius: 50%; margin-top: 6px; justify-self: center; }
-  .dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); } .dot.done { background: var(--muted); }
-  .angabe { font-weight: 700; }
-  .wert { color: var(--muted); font-size: 14px; word-break: break-word; }
-  .fehlt { color: var(--bad); font-size: 14px; }
-  li.erledigt .angabe, li.erledigt .fehlt { text-decoration: line-through; color: var(--muted); }
-  label.haken { display: inline-flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 14px; cursor: pointer; }
-  label.haken input { width: 18px; height: 18px; accent-color: var(--accent); }
-  .fehler { background: var(--bad-bg); color: var(--bad); border-radius: 10px; padding: 12px 16px; margin-top: 20px; }
-  .grenzen { margin-top: 28px; padding: 14px 18px; background: var(--warn-bg); color: var(--warn); border-radius: 10px; font-size: 14px; }
-  .grenzen b { color: inherit; }
-  footer { margin-top: 36px; color: var(--muted); font-size: 13px; }
-  @media (max-width: 520px) { h1 { font-size: 30px; } }
+  html, body { margin: 0; background: var(--grund); color: var(--weiss); }
+  body { font: 16px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif; min-height: 100vh; }
+  button { font: inherit; color: inherit; }
+  .seite { max-width: 980px; margin: 0 auto; padding: 24px 16px 96px; }
+  .versteckt { display: none !important; }
+
+  /* Bento-Raster */
+  .bento { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .kachel { background: var(--kachel); border: 1px solid var(--linie); border-radius: var(--radius); padding: 22px 24px; }
+  .breit { grid-column: 1 / -1; }
+  .frage { grid-column: 1 / -1; margin: 10px 4px -4px; font-weight: 600; color: var(--akzent); letter-spacing: .02em; }
+
+  /* Banner */
+  .banner { position: relative; overflow: hidden; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; padding: 28px 32px; min-height: 230px;
+    background: radial-gradient(120% 140% at 85% 20%, #2b4170 0%, var(--kachel) 55%); }
+  .banner h1 { margin: 0; font-size: clamp(38px, 7vw, 72px); line-height: 1; font-weight: 800; letter-spacing: .04em; }
+  .banner p { margin: 14px 0 0; color: var(--akzent); max-width: 46ch; }
+  .banner svg { width: clamp(170px, 26vw, 260px); height: auto; }
+
+  /* Auswahl der Planungsphase */
+  .wahl { cursor: pointer; display: flex; flex-direction: column; gap: 6px; min-height: 150px; justify-content: space-between; transition: border-color .15s, background .15s, transform .15s; position: relative; }
+  .wahl:hover { border-color: var(--akzent); transform: translateY(-2px); }
+  .wahl input { position: absolute; opacity: 0; pointer-events: none; }
+  .wahl .name { font-size: 26px; font-weight: 700; }
+  .wahl .massstab { font-size: 40px; font-weight: 800; color: var(--akzent); letter-spacing: .02em; }
+  .wahl .klein { color: var(--leise); font-size: 14px; }
+  .wahl .haken { position: absolute; top: 18px; right: 18px; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--akzent); display: grid; place-items: center; }
+  .wahl:has(input:checked) { background: var(--kachel-hell); border-color: var(--weiss); }
+  .wahl:has(input:checked) .haken { background: var(--weiss); border-color: var(--weiss); }
+  .wahl:has(input:checked) .haken::after { content: ""; width: 10px; height: 6px; border-left: 3px solid var(--grund); border-bottom: 3px solid var(--grund); transform: rotate(-45deg) translate(1px, -1px); }
+  .wahl:has(input:focus-visible) { outline: 3px solid var(--akzent); outline-offset: 3px; }
+
+  /* KI */
+  .ki { display: flex; align-items: center; gap: 18px; cursor: pointer; }
+  .ki .titel { font-weight: 700; font-size: 18px; }
+  .ki small { display: block; color: var(--leise); font-size: 14px; }
+  .schalter { flex: none; width: 54px; height: 30px; border-radius: 999px; background: var(--grund); border: 2px solid var(--akzent); position: relative; transition: background .15s; }
+  .schalter::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--akzent); transition: transform .15s, background .15s; }
+  .ki input { position: absolute; opacity: 0; pointer-events: none; }
+  .ki:has(input:checked) .schalter { background: var(--akzent); }
+  .ki:has(input:checked) .schalter::after { transform: translateX(24px); background: var(--grund); }
+  .ki:has(input:focus-visible) .schalter { outline: 3px solid var(--weiss); outline-offset: 2px; }
+  .ki.aus { opacity: .55; cursor: not-allowed; }
+
+  /* PDF ablegen */
+  .ablage { position: relative; min-height: 230px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px;
+    border: 2px dashed var(--akzent); background: rgba(30, 47, 79, .6); cursor: pointer; transition: background .15s, border-color .15s; }
+  .ablage:hover, .ablage.ueber { background: var(--kachel-hell); border-color: var(--weiss); }
+  .ablage.gesperrt { opacity: .5; cursor: not-allowed; }
+  .ablage input { display: none; }
+  .ablage .gross { font-size: 44px; font-weight: 800; letter-spacing: .06em; }
+  .ablage .leise { color: var(--leise); font-size: 14px; max-width: 52ch; }
+  .dateien { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
+  .datei-chip { background: var(--grund); border: 1px solid var(--linie); border-radius: 999px; padding: 4px 6px 4px 14px; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+  .datei-chip button { border: 0; background: transparent; cursor: pointer; width: 24px; height: 24px; border-radius: 50%; color: var(--akzent); }
+  .datei-chip button:hover { background: var(--kachel-hell); color: var(--weiss); }
+  .start { position: absolute; right: 18px; bottom: 18px; width: 64px; height: 64px; border-radius: 50%; border: 0; background: var(--weiss); color: var(--grund); cursor: pointer; display: grid; place-items: center; box-shadow: 0 6px 18px rgba(0,0,0,.35); transition: transform .15s; }
+  .start:hover:not(:disabled) { transform: scale(1.07); }
+  .start:disabled { background: var(--akzent); opacity: .45; cursor: not-allowed; box-shadow: none; }
+  .start svg { width: 30px; height: 30px; }
+  .start.laeuft svg { animation: suchen 1.1s ease-in-out infinite; }
+  @keyframes suchen { 0%, 100% { transform: translate(-3px, 0) rotate(-8deg); } 50% { transform: translate(3px, -2px) rotate(8deg); } }
+  .status { grid-column: 1 / -1; color: var(--akzent); text-align: center; min-height: 24px; }
+  .datenschutz { grid-column: 1 / -1; color: var(--leise); font-size: 13px; text-align: center; margin: 0; }
+  .meldung-fehler { grid-column: 1 / -1; background: #3a2340; border: 1px solid #b06a8a; border-radius: 14px; padding: 12px 16px; }
+
+  /* Seite 2 */
+  .kopfleiste { display: flex; align-items: center; gap: 14px; padding: 6px 4px 18px; border-bottom: 1px solid var(--linie); margin-bottom: 20px; }
+  .marke { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--weiss); }
+  .marke svg { width: 44px; height: 44px; }
+  .marke b { font-size: 20px; letter-spacing: .06em; }
+  .pfad { color: var(--akzent); font-size: 14px; display: flex; gap: 8px; align-items: center; }
+  .pfad span:last-child { color: var(--weiss); font-weight: 600; }
+  .kopfleiste .phase-tag { margin-left: auto; background: var(--kachel); border: 1px solid var(--linie); border-radius: 999px; padding: 4px 14px; font-size: 13px; color: var(--akzent); }
+
+  .planbereich { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 10px; }
+  .blaettern { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--linie); background: var(--kachel); cursor: pointer; display: grid; place-items: center; }
+  .blaettern:hover:not(:disabled) { background: var(--kachel-hell); border-color: var(--akzent); }
+  .blaettern:disabled { opacity: 0; pointer-events: none; }
+  .blaettern svg { width: 16px; height: 16px; fill: var(--akzent); }
+  .plankachel { padding: 12px; }
+  .plankopf { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 4px 6px 10px; }
+  .plankopf h2 { margin: 0; font-size: 17px; word-break: break-all; }
+  .zaehler { color: var(--akzent); font-size: 14px; white-space: nowrap; }
+  .plan { position: relative; background: var(--weiss); border-radius: 14px; overflow: hidden; min-height: 240px; }
+  .plan canvas { display: block; width: 100%; height: auto; }
+  .plan svg.marken { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .plan .ohne-bild { color: var(--grund); padding: 40px 20px; text-align: center; }
+  .marke-punkt { cursor: pointer; }
+  .marke-punkt circle.ring { fill: rgba(15, 30, 58, .12); stroke: var(--grund); }
+  .marke-punkt circle.zahl-grund { fill: var(--grund); }
+  .marke-punkt text { fill: var(--weiss); font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+  .marke-punkt.hinweis circle.ring { stroke-dasharray: 6 5; }
+  .marke-punkt.erledigt { opacity: .3; }
+  .marke-punkt.aktiv circle.ring { fill: rgba(167, 182, 208, .45); }
+  .punkte { display: flex; justify-content: center; gap: 10px; padding: 14px 0 2px; }
+  .punkte button { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--akzent); background: transparent; padding: 0; cursor: pointer; }
+  .punkte button.an { background: var(--akzent); }
+  .geprueft-auf { color: var(--leise); font-size: 14px; padding: 6px 6px 0; }
+
+  .liste-kopf { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 24px 4px 10px; }
+  .liste-kopf h3 { margin: 0; font-size: 20px; }
+  .zusammen { font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 999px; background: var(--akzent); color: var(--grund); }
+  .zusammen.alles-gut { background: var(--weiss); }
+  .befunde { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .befund { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-items: start; padding: 14px 18px; border-radius: 16px; background: var(--kachel); border: 1px solid var(--linie); cursor: pointer; }
+  .befund.aktiv { border-color: var(--weiss); }
+  .befund input { width: 22px; height: 22px; margin: 2px 0 0; accent-color: var(--akzent); cursor: pointer; }
+  .befund .nr { display: inline-grid; place-items: center; min-width: 24px; height: 24px; border-radius: 12px; background: var(--grund); color: var(--weiss); font-size: 12px; font-weight: 700; margin-right: 8px; padding: 0 6px; }
+  .befund .angabe { font-weight: 700; }
+  .befund .text { color: var(--akzent); font-size: 14px; grid-column: 2; }
+  .befund .gefunden { color: var(--leise); font-size: 13px; grid-column: 2; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--akzent); color: var(--akzent); margin-left: 8px; vertical-align: 2px; }
+  .befund.erledigt .angabe, .befund.erledigt .text { text-decoration: line-through; opacity: .55; }
+  .keine-befunde { padding: 18px; text-align: center; color: var(--akzent); }
+  details.inordnung { margin-top: 14px; background: var(--kachel); border: 1px solid var(--linie); border-radius: 16px; padding: 12px 18px; }
+  details.inordnung summary { cursor: pointer; font-weight: 600; color: var(--akzent); }
+  details.inordnung ul { margin: 10px 0 0; padding-left: 18px; color: var(--leise); font-size: 14px; }
+  details.inordnung li b { color: var(--weiss); font-weight: 600; }
+  .meldung { margin: 10px 0 0; padding: 10px 14px; border-radius: 12px; border: 1px dashed var(--akzent); color: var(--akzent); font-size: 14px; }
+
+  .zurueck { position: fixed; left: 20px; bottom: 20px; display: inline-flex; align-items: center; gap: 10px; background: var(--kachel); border: 1px solid var(--linie); border-radius: 999px; padding: 10px 18px 10px 12px; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+  .zurueck:hover { border-color: var(--akzent); }
+  .zurueck svg { width: 22px; height: 22px; stroke: var(--weiss); fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+
+  footer { margin-top: 40px; color: var(--leise); font-size: 13px; text-align: center; }
+
+  @media (max-width: 640px) {
+    .bento { grid-template-columns: 1fr; }
+    .banner { grid-template-columns: 1fr; padding: 24px; }
+    .banner svg { justify-self: end; margin-top: -10px; width: 160px; }
+    .planbereich { grid-template-columns: 32px 1fr 32px; gap: 6px; }
+    .blaettern { width: 32px; height: 32px; }
+    .zurueck { left: 12px; bottom: 12px; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="kicker">Grundrisse · Gruppe A</div>
-  <h1>Planprüfer</h1>
-  <p class="sub">Lade einen Grundriss als PDF hoch. Der Planprüfer kontrolliert, ob die zeichnerischen Pflichtinhalte vorhanden sind. Die Prüfpunkte kommen nach und nach dazu.</p>
 
-  <fieldset class="phase">
-    <legend>1. Welche Planungsphase soll geprüft werden?</legend>
-    <label><input type="radio" name="phase" value="entwurf" autocomplete="off"><b>Entwurfsplanung</b><span>Checkliste Entwurfsplanung, Grundrisse M 1:100</span></label>
-    <label><input type="radio" name="phase" value="werk" autocomplete="off"><b>Werkplanung</b><span>Checkliste Werkplanung, Grundrisse M 1:50</span></label>
-  </fieldset>
+<!-- ================= Seite 1: Auswahl und Upload ================= -->
+<main class="seite" id="seite1">
+  <div class="bento">
+    <section class="kachel banner breit" aria-label="Planprüfer">
+      <div>
+        <h1>PLAN<br>PRÜFER</h1>
+        <p>Grundriss als PDF hochladen, der Planprüfer kontrolliert die zeichnerischen Pflichtinhalte und markiert fehlende Angaben im Plan.</p>
+      </div>
+      <!-- Notizzettel mit abgehakten Zeilen und Lupe -->
+      <svg viewBox="0 0 260 220" aria-hidden="true">
+        <rect x="18" y="28" width="168" height="176" rx="16" fill="#FFFFFF"/>
+        <rect x="72" y="16" width="60" height="22" rx="8" fill="#A7B6D0"/>
+        <g stroke="#0F1E3A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+          <path d="M42 74 l10 10 l18 -20"/><path d="M42 124 l10 10 l18 -20"/><path d="M42 174 l10 10 l18 -20"/>
+        </g>
+        <g stroke="#A7B6D0" stroke-width="7" stroke-linecap="round"><path d="M86 79 h76"/><path d="M86 129 h60"/><path d="M86 179 h70"/></g>
+        <circle cx="178" cy="118" r="44" fill="rgba(167,182,208,.25)" stroke="#FFFFFF" stroke-width="13"/>
+        <path d="M210 152 l34 38" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round"/>
+      </svg>
+    </section>
 
-  <div class="ki" id="kiBox">
-    <label><input type="checkbox" id="kiAn" autocomplete="off"><b>Zusätzlich mit KI prüfen (Google Gemini)</b>
-      <small id="kiText">Findet zum Beispiel Räume, bei denen Name und Fläche fehlen. Dafür wird der Plan an Google gesendet. Bitte nur eigene, unkritische Pläne verwenden. KI-Funde sind Hinweise und müssen geprüft werden.</small>
+    <div class="frage">Wonach soll geprüft werden?</div>
+    <label class="kachel wahl"><input type="radio" name="phase" value="werk" autocomplete="off"><span class="haken"></span>
+      <span class="name">Werkplanung</span><span class="massstab">1:50</span><span class="klein">Checkliste Werkplanung</span></label>
+    <label class="kachel wahl"><input type="radio" name="phase" value="entwurf" autocomplete="off"><span class="haken"></span>
+      <span class="name">Entwurf</span><span class="massstab">1:100</span><span class="klein">Checkliste Entwurfsplanung</span></label>
+
+    <label class="kachel ki breit" id="kiBox">
+      <input type="checkbox" id="kiAn" autocomplete="off"><span class="schalter" aria-hidden="true"></span>
+      <span><span class="titel">KI</span> <small id="kiText">Zusätzlich mit KI prüfen (Google Gemini). Dafür wird der Plan an Google gesendet. Nur eigene, unkritische Pläne verwenden, KI-Funde sind Hinweise.</small></span>
     </label>
-  </div>
 
-  <label class="drop gesperrt" id="drop">
-    <input type="file" id="datei" accept="application/pdf,.pdf" multiple>
-    <strong id="dropTitel">2. PDF hierher ziehen oder klicken</strong>
-    <span>ArchiCAD-Export mit auslesbarem Text. Es können mehrere Dateien gleichzeitig geprüft werden.</span>
-  </label>
-  <div class="hinweis">Ohne KI-Prüfung bleibt die Datei auf diesem Rechner und wird nicht ins Internet gesendet. Mit eingeschalteter KI-Prüfung wird sie an Google Gemini gesendet.</div>
+    <div class="kachel ablage breit gesperrt" id="ablage" role="button" tabindex="0" aria-label="PDF auswählen">
+      <input type="file" id="datei" accept="application/pdf,.pdf" multiple>
+      <div class="gross">PDF</div>
+      <div class="leise" id="ablageText">Erst oben die Planungsphase wählen.</div>
+      <div class="dateien" id="dateiListe"></div>
+      <button class="start" id="start" type="button" disabled title="Prüfung starten" aria-label="Prüfung starten">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="8.5" fill="none" stroke="currentColor" stroke-width="3.5"/><path d="M19.5 19.5 L27 27" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
 
-  <div id="ergebnisse"></div>
-
-  <div class="grenzen">
-    <b>Geplant für Grundrisse:</b> Raumflächen, Höhenangaben, Raumbezeichnungen, Schnittlinien, Nordpfeil, Bemaßung.<br>
-    <b>Noch nicht geprüft:</b> Maße und Vorschriften (Türbreiten, Fluchtwege), Rechenwerte, Abgleich mehrerer Pläne.
+    <div class="status" id="status" aria-live="polite"></div>
+    <p class="datenschutz">Ohne KI bleibt die Datei auf diesem Rechner. Mit KI wird sie an Google Gemini gesendet.</p>
   </div>
   <footer>Planprüfer · Prototyp. Die Prüfung findet fehlende Angaben, sie ersetzt keine Prüfung durch Fachpersonen.</footer>
-</div>
+</main>
+
+<!-- ================= Seite 2: Ergebnis ================= -->
+<main class="seite versteckt" id="seite2">
+  <header class="kopfleiste">
+    <a class="marke" href="#" id="markeLink" aria-label="Zur Startseite des Planprüfers">
+      <svg viewBox="0 0 44 44" aria-hidden="true">
+        <rect x="4" y="6" width="26" height="32" rx="6" fill="#FFFFFF"/>
+        <path d="M10 17 l3 3 l6 -7 M10 28 l3 3 l6 -7" stroke="#0F1E3A" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="29" cy="24" r="8" fill="#1E2F4F" stroke="#A7B6D0" stroke-width="3.5"/><path d="M35 30 l6 6" stroke="#A7B6D0" stroke-width="4.5" stroke-linecap="round"/>
+      </svg>
+      <b>PLAN PRÜFER</b>
+    </a>
+    <nav class="pfad" aria-label="Seitenpfad"><span>Prüfung</span><span>›</span><span>Ergebnis</span></nav>
+    <span class="phase-tag" id="phaseTag"></span>
+  </header>
+
+  <div class="planbereich">
+    <button class="blaettern" id="zurueckPlan" type="button" aria-label="Vorheriger Plan"><svg viewBox="0 0 16 16"><path d="M12 1 L3 8 L12 15 Z"/></svg></button>
+    <section class="kachel plankachel">
+      <div class="plankopf"><h2 id="planName"></h2><span class="zaehler" id="zaehler"></span></div>
+      <div class="plan" id="plan"></div>
+      <div class="punkte" id="punkte"></div>
+      <div class="geprueft-auf" id="gepruefAuf"></div>
+    </section>
+    <button class="blaettern" id="weiterPlan" type="button" aria-label="Nächster Plan"><svg viewBox="0 0 16 16"><path d="M4 1 L13 8 L4 15 Z"/></svg></button>
+  </div>
+
+  <div class="liste-kopf"><h3>Zum Abhaken</h3><span class="zusammen" id="zusammen"></span></div>
+  <ul class="befunde" id="befunde"></ul>
+  <div id="meldungen"></div>
+  <details class="inordnung" id="inOrdnung"><summary></summary><ul></ul></details>
+
+  <button class="zurueck" id="zurueck" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12 H5 M11 5 L4 12 L11 19"/></svg>Zurück</button>
+</main>
 
 <script>
-  const drop = document.getElementById('drop');
-  const input = document.getElementById('datei');
-  const ergebnisse = document.getElementById('ergebnisse');
+  const $ = id => document.getElementById(id);
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+  const PHASEN = { entwurf: 'Entwurfsplanung 1:100', werk: 'Werkplanung 1:50' };
 
-  const PHASEN = { entwurf: 'Entwurfsplanung', werk: 'Werkplanung' };
+  // ---------- Seite 1 ----------
   const radios = Array.from(document.querySelectorAll('input[name=phase]'));
-  const dropTitel = document.getElementById('dropTitel');
+  const ablage = $('ablage'), input = $('datei'), start = $('start'), statusZeile = $('status');
+  const kiAn = $('kiAn'), kiBox = $('kiBox'), kiText = $('kiText');
+  let gewaehlt = [];       // Dateien, die geprüft werden sollen
+  let ergebnisse = [];     // { datei: File, daten: Antwort des Servers, erledigt: Set }
+  let aktuell = 0, laeuft = false;
+
   function aktuellePhase() { const r = radios.find(x => x.checked); return r ? r.value : null; }
-  function aktualisiereSperre() {
-    const frei = !!aktuellePhase();
-    drop.classList.toggle('gesperrt', !frei);
-    input.disabled = !frei;
-    dropTitel.textContent = frei ? '2. PDF hierher ziehen oder klicken' : '2. PDF hochladen (erst die Planungsphase wählen)';
+  function aktualisiere() {
+    const phase = aktuellePhase();
+    ablage.classList.toggle('gesperrt', !phase);
+    input.disabled = !phase || laeuft;
+    $('ablageText').textContent = !phase ? 'Erst oben die Planungsphase wählen.'
+      : (gewaehlt.length ? 'Weitere PDFs hinzufügen oder mit der Lupe die Prüfung starten.' : 'PDF hierher ziehen oder klicken. Mehrere Grundrisse auf einmal sind möglich.');
+    start.disabled = !phase || gewaehlt.length === 0 || laeuft;
+    const liste = $('dateiListe'); liste.textContent = '';
+    gewaehlt.forEach((f, i) => {
+      const chip = el('span', 'datei-chip', f.name);
+      const weg = el('button', '', '×'); weg.type = 'button'; weg.title = 'Entfernen'; weg.setAttribute('aria-label', f.name + ' entfernen');
+      weg.addEventListener('click', ev => { ev.stopPropagation(); gewaehlt.splice(i, 1); aktualisiere(); });
+      chip.append(weg); liste.append(chip);
+    });
   }
-  // KI-Prüfung: ist standardmäßig aus und nur wählbar, wenn ein Schlüssel eingerichtet ist.
-  const kiAn = document.getElementById('kiAn'), kiBox = document.getElementById('kiBox'), kiText = document.getElementById('kiText');
+  // Die Phase wird bewusst nicht gemerkt: bei jedem Besuch wird neu gefragt.
+  radios.forEach(r => { r.checked = false; r.addEventListener('change', aktualisiere); });
   kiAn.checked = false;
   fetch('/status').then(r => r.json()).then(s => {
-    if (!s.ki) {
-      kiAn.disabled = true; kiBox.classList.add('aus');
-      kiText.textContent = 'Noch nicht eingerichtet: Es ist kein KI-Schlüssel hinterlegt (siehe README, Abschnitt „KI-Prüfung einrichten“).';
-    }
+    if (!s.ki) { kiAn.disabled = true; kiBox.classList.add('aus'); kiText.textContent = 'Noch nicht eingerichtet: Es ist kein KI-Schlüssel hinterlegt (siehe README, Abschnitt „KI-Prüfung einrichten“).'; }
   }).catch(() => { });
 
-  // Die Phase wird bewusst nicht gemerkt: bei jedem Besuch (und Neuladen) wird neu gefragt.
-  radios.forEach(r => { r.checked = false; r.addEventListener('change', aktualisiereSperre); });
-  aktualisiereSperre();
+  function fuegeHinzu(liste) {
+    if (!aktuellePhase()) { zeigeStatus('Bitte zuerst die Planungsphase wählen: Werkplanung oder Entwurf.', true); return; }
+    for (const f of Array.from(liste)) {
+      if (!/\.pdf$/i.test(f.name)) { zeigeStatus(`„${f.name}“ ist keine PDF-Datei.`, true); continue; }
+      if (!gewaehlt.some(g => g.name === f.name && g.size === f.size)) gewaehlt.push(f);
+    }
+    aktualisiere();
+  }
+  ablage.addEventListener('click', ev => { if (ev.target.closest('.start') || ev.target.closest('.datei-chip')) return; if (!input.disabled) input.click(); });
+  ablage.addEventListener('keydown', ev => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target === ablage) { ev.preventDefault(); if (!input.disabled) input.click(); } });
+  input.addEventListener('change', () => { fuegeHinzu(input.files); input.value = ''; });
+  ['dragenter', 'dragover'].forEach(e => ablage.addEventListener(e, ev => { ev.preventDefault(); if (aktuellePhase()) ablage.classList.add('ueber'); }));
+  ['dragleave', 'drop'].forEach(e => ablage.addEventListener(e, ev => { ev.preventDefault(); ablage.classList.remove('ueber'); }));
+  ablage.addEventListener('drop', ev => fuegeHinzu(ev.dataTransfer.files));
+  start.addEventListener('click', ev => { ev.stopPropagation(); pruefeAlle(); });
 
-  input.addEventListener('change', () => { pruefeDateien(input.files); input.value = ''; });
-  ['dragenter', 'dragover'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); if (aktuellePhase()) drop.classList.add('over'); }));
-  ['dragleave', 'drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
-  drop.addEventListener('drop', ev => {
-    if (!aktuellePhase()) { zeigeFehler('Bitte zuerst die Planungsphase wählen: Entwurfsplanung oder Werkplanung.'); return; }
-    pruefeDateien(ev.dataTransfer.files);
-  });
-
-  // Die Seite muss über den Planprüfer-Server geöffnet werden (http://localhost:8080), nicht als Datei.
-  if (location.protocol !== 'http:' && location.protocol !== 'https:') {
-    const b = el('div', 'fehler');
-    b.append(document.createTextNode('Diese Seite wurde direkt als Datei geöffnet, deshalb funktioniert der Upload nicht. Bitte „Planpruefer-starten.cmd“ im Projektordner doppelklicken. Dann öffnet sich die Seite unter '));
-    const a = el('a', '', 'http://localhost:8080'); a.href = 'http://localhost:8080';
-    b.append(a, document.createTextNode('.'));
-    document.querySelector('.wrap').insertBefore(b, drop);
+  function zeigeStatus(text, fehler) {
+    statusZeile.textContent = '';
+    if (!text) return;
+    if (fehler) { const d = el('div', 'meldung-fehler', text); statusZeile.append(d); setTimeout(() => { if (d.isConnected) d.remove(); }, 9000); }
+    else statusZeile.textContent = text;
   }
 
-  // Für die KI-Prüfungen wird die Planseite im Browser als Bild gezeichnet (mit pdf.js von cdnjs) und an den
-  // Server geschickt. Die KI sieht Zeichnungen nur im Bild wirklich, aus einem PDF liest sie vor allem den Text.
+  // Die Seite muss über den Planprüfer-Server geöffnet werden, nicht als Datei.
+  if (location.protocol !== 'http:' && location.protocol !== 'https:') {
+    zeigeStatus('Diese Seite wurde direkt als Datei geöffnet, deshalb funktioniert die Prüfung nicht. Bitte „Planpruefer-starten.cmd“ doppelklicken, dann öffnet sich die Seite unter http://localhost:8080.', true);
+  }
+
+  // pdf.js (von cdnjs): zeichnet den Plan auf Seite 2 und erzeugt das Bild für die KI.
   const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
   const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   let pdfjsLaden = null;
@@ -162,18 +306,20 @@
     if (!pdfjsLaden) pdfjsLaden = new Promise((ok, fehler) => {
       const s = document.createElement('script'); s.src = PDFJS_URL;
       s.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; ok(); };
-      s.onerror = () => fehler(new Error('pdf.js konnte nicht geladen werden (Internet?)'));
+      s.onerror = () => { pdfjsLaden = null; fehler(new Error('pdf.js konnte nicht geladen werden (Internet?)')); };
       document.head.append(s);
     });
     return pdfjsLaden;
   }
-  async function erzeugeBild(datei) {
+  async function ladeSeite(datei) {
     await ladePdfjs();
     const pdf = await window.pdfjsLib.getDocument({ data: await datei.arrayBuffer() }).promise;
-    const seite = await pdf.getPage(1);
+    return pdf.getPage(1);
+  }
+  async function erzeugeBild(datei) {
+    const seite = await ladeSeite(datei);
     const roh = seite.getViewport({ scale: 1 });
-    const scale = 2400 / Math.max(roh.width, roh.height);
-    const vp = seite.getViewport({ scale });
+    const vp = seite.getViewport({ scale: 2400 / Math.max(roh.width, roh.height) });
     const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
     await seite.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
     const blob = await new Promise(r => c.toBlob(r, 'image/png'));
@@ -183,115 +329,168 @@
     return j.id;
   }
 
-  async function pruefeDateien(liste) {
+  async function pruefeAlle() {
     const phase = aktuellePhase();
-    if (!phase) { zeigeFehler('Bitte zuerst die Planungsphase wählen: Entwurfsplanung oder Werkplanung.'); return; }
-    for (const f of Array.from(liste)) {
-      if (!/\.pdf$/i.test(f.name)) { zeigeFehler(`„${f.name}“ ist keine PDF-Datei.`); continue; }
-      const karte = neueKarte(f.name);
+    if (!phase || gewaehlt.length === 0 || laeuft) return;
+    laeuft = true; start.classList.add('laeuft'); aktualisiere();
+    const neu = [];
+    for (let i = 0; i < gewaehlt.length; i++) {
+      const f = gewaehlt[i];
+      zeigeStatus(`Prüfe ${gewaehlt.length > 1 ? `Plan ${i + 1} von ${gewaehlt.length}: ` : ''}${f.name} …`);
       try {
         const mitKi = kiAn.checked;
         let bildId = '', bildFehler = '';
-        if (mitKi) {
-          karte.querySelector('.badge').textContent = 'Bild für die KI wird erzeugt …';
-          try { bildId = await erzeugeBild(f); } catch (e) { bildFehler = e.message; }
-          karte.querySelector('.badge').textContent = 'wird geprüft …';
-        }
+        if (mitKi) { try { bildId = await erzeugeBild(f); } catch (e) { bildFehler = e.message; } }
         const r = await fetch('/pruefen', { method: 'POST', headers: { 'X-Dateiname': encodeURIComponent(f.name), 'X-Phase': phase, 'X-Ki': (mitKi ? 'ja' : 'nein'), 'X-Bild': bildId }, body: f });
         const daten = await r.json();
         if (!r.ok) throw new Error(daten.fehler || 'Unbekannter Fehler');
         if (bildFehler) (daten.meldungen = daten.meldungen || []).push('Das Bild für die KI konnte nicht erzeugt werden (' + bildFehler + '). Die KI hat stattdessen das PDF benutzt, das ist ungenauer.');
-        zeigeErgebnis(karte, daten);
+        neu.push({ datei: f, daten, erledigt: new Set() });
       } catch (e) {
-        karte.remove();
-        const grund = (e instanceof TypeError)
-          ? 'Der Planprüfer-Server ist nicht erreichbar. Läuft das Fenster von „Planpruefer-starten.cmd“ noch?'
-          : e.message;
-        zeigeFehler(`„${f.name}“ konnte nicht geprüft werden: ${grund}`);
+        const grund = (e instanceof TypeError) ? 'Der Planprüfer-Server ist nicht erreichbar. Läuft das Fenster von „Planpruefer-starten.cmd“ noch?' : e.message;
+        zeigeStatus(`„${f.name}“ konnte nicht geprüft werden: ${grund}`, true);
       }
     }
+    laeuft = false; start.classList.remove('laeuft'); aktualisiere();
+    if (neu.length) { ergebnisse = neu; aktuell = 0; zeigeStatus(''); zeigeSeite2(); }
   }
 
-  function el(tag, cls, text) {
-    const e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (text !== undefined) e.textContent = text;
-    return e;
+  // ---------- Seite 2 ----------
+  function zeigeSeite2() {
+    $('seite1').classList.add('versteckt'); $('seite2').classList.remove('versteckt');
+    window.scrollTo(0, 0);
+    zeigePlan(aktuell);
+  }
+  function zeigeSeite1() {
+    $('seite2').classList.add('versteckt'); $('seite1').classList.remove('versteckt');
+    window.scrollTo(0, 0);
+  }
+  $('zurueck').addEventListener('click', zeigeSeite1);
+  $('markeLink').addEventListener('click', ev => { ev.preventDefault(); zeigeSeite1(); });
+  $('zurueckPlan').addEventListener('click', () => { if (aktuell > 0) zeigePlan(aktuell - 1); });
+  $('weiterPlan').addEventListener('click', () => { if (aktuell < ergebnisse.length - 1) zeigePlan(aktuell + 1); });
+  document.addEventListener('keydown', ev => {
+    if ($('seite2').classList.contains('versteckt') || ev.target.closest('input')) return;
+    if (ev.key === 'ArrowLeft') $('zurueckPlan').click();
+    if (ev.key === 'ArrowRight') $('weiterPlan').click();
+  });
+
+  // Befunde, die abgehakt werden: alles, was nicht in Ordnung ist. Hinweise (gelb) und KI-Hinweise sind keine sicheren Fehler.
+  function istHinweis(b) { return b.quelle === 'hinweis' || b.quelle === 'ki'; }
+
+  let zeichenNr = 0;
+  async function zeigePlan(i) {
+    aktuell = i;
+    const e = ergebnisse[i], d = e.daten;
+    $('planName').textContent = d.datei;
+    $('zaehler').textContent = ergebnisse.length > 1 ? `${i + 1}/${ergebnisse.length}` : '';
+    $('phaseTag').textContent = PHASEN[d.phase] || '';
+    $('zurueckPlan').disabled = i === 0;
+    $('weiterPlan').disabled = i === ergebnisse.length - 1;
+    const punkte = $('punkte'); punkte.textContent = '';
+    if (ergebnisse.length > 1) ergebnisse.forEach((_, k) => {
+      const b = el('button', k === i ? 'an' : ''); b.type = 'button'; b.setAttribute('aria-label', `Plan ${k + 1}`);
+      b.addEventListener('click', () => zeigePlan(k)); punkte.append(b);
+    });
+    const namen = (d.aktiv || []).map(a => a.replace(/^\S+\s+/, ''));
+    $('gepruefAuf').textContent = namen.length ? 'Geprüft auf: ' + namen.join(', ') : 'In dieser Phase sind noch keine Prüfpunkte aktiv.';
+
+    const offen = d.befunde.filter(b => !b.ok);
+    offen.forEach((b, k) => b._nr = k + 1);
+    zeigeListe(e, offen);
+    await zeichnePlan(e, offen);
   }
 
-  function neueKarte(name) {
-    const karte = el('section', 'card');
-    const kopf = el('div', 'card-head');
-    kopf.append(el('h2', '', name), el('span', 'badge wait', 'wird geprüft …'));
-    karte.append(kopf);
-    ergebnisse.prepend(karte);
-    return karte;
-  }
-
-  function zeigeFehler(text) { const d = el('div', 'fehler', text); ergebnisse.prepend(d); setTimeout(() => d.remove(), 8000); }
-
-  function zeigeErgebnis(karte, daten) {
-    karte.textContent = '';
-    const kopf = el('div', 'card-head');
-    const badge = el('span', 'badge');
-    const titel = el('h2', '', daten.datei);
-    if (daten.phase && PHASEN[daten.phase]) titel.append(document.createElement('br'), el('span', 'phasen-tag', 'Geprüft als: ' + PHASEN[daten.phase]));
-    kopf.append(titel, badge);
-    const liste = el('ul', 'befunde');
-    karte.append(kopf, liste);
-
-    const items = [];
-    const keinePruefungen = !daten.aktiv || daten.aktiv.length === 0;
-    if (keinePruefungen && daten.befunde.length === 0) {
-      const li = el('li');
-      li.append(el('span', 'dot done'), el('div', 'wert', 'Das PDF wurde gelesen, aber in dieser Version sind noch keine Prüfpunkte aktiv.'));
+  function zeigeListe(e, offen) {
+    const d = e.daten;
+    const liste = $('befunde'); liste.textContent = '';
+    if (offen.length === 0) liste.append(el('li', 'keine-befunde', 'Keine Befunde, alle geprüften Angaben sind vorhanden.'));
+    offen.forEach(b => {
+      const li = el('li', 'befund'); li.dataset.nr = b._nr;
+      const cb = el('input'); cb.type = 'checkbox'; cb.checked = e.erledigt.has(b._nr); cb.setAttribute('aria-label', 'Korrigiert: ' + b.angabe);
+      const kopf = el('div', 'angabe'); kopf.append(el('span', 'nr', String(b._nr)), document.createTextNode(b.angabe));
+      if (b.quelle === 'ki') kopf.append(el('span', 'tag', 'KI-Hinweis'));
+      else if (b.quelle === 'hinweis') kopf.append(el('span', 'tag', 'Hinweis'));
+      if (b.x == null || b.y == null) kopf.append(el('span', 'tag', 'ohne Ort im Plan'));
+      li.append(cb, kopf, el('div', 'text', b.hinweis || 'Angabe fehlt.'));
+      if (b.wert) li.append(el('div', 'gefunden', 'Gefunden: ' + b.wert));
+      li.classList.toggle('erledigt', cb.checked);
+      cb.addEventListener('change', () => { cb.checked ? e.erledigt.add(b._nr) : e.erledigt.delete(b._nr); li.classList.toggle('erledigt', cb.checked); markiere(); zaehle(); });
+      li.addEventListener('click', ev => { if (ev.target !== cb) waehle(b._nr, true); });
       liste.append(li);
-    } else if (daten.aktiv && daten.aktiv.length > 0) {
-      const li = el('li');
-      li.append(el('span', 'dot done'), el('div', 'wert', 'Aktive Prüfpunkte: ' + daten.aktiv.join(', ')));
-      liste.append(li);
+    });
+    const meld = $('meldungen'); meld.textContent = '';
+    for (const m of (d.meldungen || [])) meld.append(el('p', 'meldung', m));
+    const gut = d.befunde.filter(b => b.ok);
+    const det = $('inOrdnung'); det.classList.toggle('versteckt', gut.length === 0);
+    det.querySelector('summary').textContent = `${gut.length} Angaben in Ordnung`;
+    const ul = det.querySelector('ul'); ul.textContent = '';
+    gut.forEach(b => { const li = el('li'); li.append(el('b', '', b.angabe + ': '), document.createTextNode(b.wert || '')); ul.append(li); });
+    zaehle();
+    function zaehle() {
+      const fehler = offen.filter(b => !istHinweis(b)), hinweise = offen.filter(istHinweis);
+      const offenF = fehler.filter(b => !e.erledigt.has(b._nr)).length, offenH = hinweise.filter(b => !e.erledigt.has(b._nr)).length;
+      const z = $('zusammen');
+      z.classList.toggle('alles-gut', offenF + offenH === 0);
+      if (offen.length === 0) z.textContent = 'Keine Befunde';
+      else if (offenF + offenH === 0) z.textContent = 'Alles abgehakt – bitte neu hochladen';
+      else z.textContent = [offenF ? `${offenF} ${offenF === 1 ? 'Fehler' : 'Fehler'} offen` : '', offenH ? `${offenH} ${offenH === 1 ? 'Hinweis' : 'Hinweise'}` : ''].filter(Boolean).join(' · ');
     }
-    for (const b of daten.befunde) {
-      const li = el('li');
-      const dot = el('span', 'dot ' + (b.ok ? 'ok' : 'bad'));
-      const inhalt = el('div');
-      const kopfzeile = el('div', 'angabe', b.angabe);
-      if (b.quelle === 'ki') kopfzeile.append(el('span', 'kitag', 'KI-Hinweis'));
-      if (b.quelle === 'hinweis') kopfzeile.append(el('span', 'kitag', 'Hinweis'));
-      inhalt.append(kopfzeile);
-      if (b.ok) {
-        inhalt.append(el('div', 'wert', b.wert));
-      } else {
-        inhalt.append(el('div', 'fehlt', b.hinweis || 'Angabe fehlt.'));
-        if (b.wert) inhalt.append(el('div', 'wert', 'Gefunden: ' + b.wert));
-        const lab = el('label', 'haken');
-        const cb = el('input'); cb.type = 'checkbox';
-        lab.append(cb, document.createTextNode('Korrigiert'));
-        cb.addEventListener('change', aktualisiere);
-        inhalt.append(lab);
-        items.push({ li, dot, cb });
-      }
-      li.append(dot, inhalt);
-      liste.append(li);
-    }
-
-    for (const m of (daten.meldungen || [])) karte.append(el('p', 'meldung', m));
-
-    function aktualisiere() {
-      let offen = 0;
-      for (const it of items) {
-        it.li.classList.toggle('erledigt', it.cb.checked);
-        it.dot.className = 'dot ' + (it.cb.checked ? 'done' : 'bad');
-        if (!it.cb.checked) offen++;
-      }
-      if (keinePruefungen && daten.befunde.length === 0) { badge.className = 'badge wait'; badge.textContent = 'Keine Prüfpunkte aktiv'; }
-      else if (items.length === 0) { badge.className = 'badge ok'; badge.textContent = 'Keine Befunde'; }
-      else if (offen === 0) { badge.className = 'badge ok'; badge.textContent = 'Alles korrigiert – bitte neu hochladen'; }
-      else { badge.className = 'badge bad'; badge.textContent = offen + (offen === 1 ? ' Angabe fehlt' : ' Angaben fehlen'); }
-    }
-    aktualisiere();
   }
-  window.zeigeDemo = (daten) => zeigeErgebnis(neueKarte(daten.datei), daten);
+
+  async function zeichnePlan(e, offen) {
+    const nr = ++zeichenNr;
+    const plan = $('plan'); plan.textContent = '';
+    plan.append(el('div', 'ohne-bild', 'Plan wird gezeichnet …'));
+    let seite;
+    try { seite = await ladeSeite(e.datei); }
+    catch (err) { if (nr === zeichenNr) { plan.textContent = ''; plan.append(el('div', 'ohne-bild', 'Der Plan kann nicht angezeigt werden (' + err.message + '). Die Liste unten gilt trotzdem.')); } return; }
+    if (nr !== zeichenNr) return;
+    const roh = seite.getViewport({ scale: 1 });
+    const breite = Math.min(plan.clientWidth || 900, 1400);
+    const scale = (breite / roh.width) * Math.min(window.devicePixelRatio || 1, 2);
+    const vp = seite.getViewport({ scale });
+    const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    await seite.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    if (nr !== zeichenNr) return;
+    plan.textContent = '';
+    plan.append(c);
+    // Markierungen: die Positionen vom Server sind in Punkt, von links oben gemessen (wie die Seite in pdf.js)
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg'); svg.setAttribute('class', 'marken');
+    svg.setAttribute('viewBox', `0 0 ${roh.width} ${roh.height}`); svg.setAttribute('preserveAspectRatio', 'none');
+    const r = Math.max(roh.width, roh.height) / 45;
+    offen.filter(b => b.x != null && b.y != null).forEach(b => {
+      const g = document.createElementNS(ns, 'g'); g.setAttribute('class', 'marke-punkt' + (istHinweis(b) ? ' hinweis' : '')); g.dataset.nr = b._nr;
+      const ring = document.createElementNS(ns, 'circle'); ring.setAttribute('class', 'ring'); ring.setAttribute('cx', b.x); ring.setAttribute('cy', b.y); ring.setAttribute('r', r); ring.setAttribute('stroke-width', r / 6);
+      const zg = document.createElementNS(ns, 'circle'); zg.setAttribute('class', 'zahl-grund'); zg.setAttribute('cx', b.x + r * .8); zg.setAttribute('cy', b.y - r * .8); zg.setAttribute('r', r * .55);
+      const t = document.createElementNS(ns, 'text'); t.setAttribute('x', b.x + r * .8); t.setAttribute('y', b.y - r * .8); t.setAttribute('font-size', r * .7); t.textContent = b._nr;
+      const titel = document.createElementNS(ns, 'title'); titel.textContent = `${b._nr}: ${b.angabe}`;
+      g.append(titel, ring, zg, t);
+      g.addEventListener('click', () => waehle(b._nr, false));
+      svg.append(g);
+    });
+    plan.append(svg);
+    markiere();
+  }
+
+  let gewaehlteNr = null;
+  function waehle(nr, zumPlan) {
+    gewaehlteNr = nr; markiere();
+    const ziel = zumPlan ? document.querySelector(`.marke-punkt[data-nr="${nr}"]`) : document.querySelector(`.befund[data-nr="${nr}"]`);
+    if (ziel) (zumPlan ? $('plan') : ziel).scrollIntoView({ behavior: 'smooth', block: zumPlan ? 'nearest' : 'center' });
+  }
+  function markiere() {
+    const e = ergebnisse[aktuell]; if (!e) return;
+    document.querySelectorAll('.marke-punkt').forEach(g => { const n = +g.dataset.nr; g.classList.toggle('erledigt', e.erledigt.has(n)); g.classList.toggle('aktiv', n === gewaehlteNr); });
+    document.querySelectorAll('.befund').forEach(li => li.classList.toggle('aktiv', +li.dataset.nr === gewaehlteNr));
+  }
+  let groesse = null;
+  window.addEventListener('resize', () => { clearTimeout(groesse); groesse = setTimeout(() => { if (!$('seite2').classList.contains('versteckt') && ergebnisse[aktuell]) zeigePlan(aktuell); }, 250); });
+
+  aktualisiere();
+  // Für Vorführungen und Tests: Dateien von außen übergeben
+  window.planpruefer = { fuegeHinzu, pruefeAlle };
 </script>
 </body>
 </html>

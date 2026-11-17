@@ -74,6 +74,14 @@ Stand: Ende Montag, 16.11.2026 (Tag 1 von 5). Der Zeitplan steht in [PLAN.md](PL
 - **Demo-Server** auf Port 8081: `.claude/launch.json` (Eintrag `planpruefer-demo`). Der Server auf 8080 bleibt unberührt und läuft mit altem Stand, bis ihr ihn neu startet.
 - Für das Design aufgefallen: Der gelbe Hinweis zählt oben im Schild noch als "Angabe fehlt", und der Fußtext ("Geplant für Grundrisse ...") ist veraltet.
 
+## Neues Design (Bento-Stil, nach euren Skizzen)
+
+- `pruefung/web/index.html` neu, Farben #0F1E3A, #1E2F4F, #A7B6D0, #FFFFFF.
+- **Seite 1:** Banner "PLAN PRÜFER" mit Notizzettel (abgehakt) und Lupe; Frage "Wonach soll geprüft werden?" mit zwei Kacheln Werkplanung 1:50 und Entwurf 1:100; KI-Kachel mit Schalter; PDF-Kachel (mehrere Dateien, einzeln entfernbar); Prüfung startet über die Lupe unten rechts.
+- **Seite 2:** Kopfleiste mit Planprüfer-Zeichen und Pfad "Prüfung › Ergebnis"; Plan mittig (mit pdf.js gezeichnet), Befunde als nummerierte Kreise im Plan (gestrichelt = Hinweis); Dreiecke links und rechts zum Blättern, Punkte unter dem Plan, Zähler 1/2; "Geprüft auf: …"; darunter die Liste zum Abhaken (abgehakte Befunde werden im Plan blass); "n Angaben in Ordnung" zum Aufklappen; Pfeil "Zurück" unten links.
+- Hinweise zählen oben getrennt ("1 Fehler offen · 1 Hinweis").
+- Der Plan wird nur angezeigt, wenn pdf.js aus dem Internet geladen werden kann. Ohne Internet bleibt die Liste.
+
 ## Eure Aufgaben für morgen
 
 1. **Server neu starten**, damit alles Neue gilt: das schwarze Server-Fenster schließen und `Planpruefer-starten.cmd` doppelklicken. (Der Server läuft zurzeit noch mit altem Stand.)
