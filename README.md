@@ -51,7 +51,7 @@ Manche Prüfungen, zum Beispiel "Raum ohne Name und Fläche", macht eine KI (Goo
 Wichtig:
 - `schluessel.txt` wird nie auf GitHub hochgeladen. Den Schlüssel nicht weitergeben.
 - Bei eingeschalteter KI wird der Plan an Google gesendet. Im kostenlosen Zugang darf Google die Eingaben zur Verbesserung seiner Produkte nutzen. Deshalb nur eigene, unkritische Pläne verwenden.
-- KI-Funde sind **Hinweise** und müssen von einem Menschen geprüft werden.
+- KI-Funde sind **Hinweise** und müssen von einem Menschen geprüft werden. Bei eingeschalteter KI erzeugt die Seite ein Bild der Planseite und lädt dafür die Bibliothek pdf.js von cdnjs.cloudflare.com (Internet nötig). Die KI-Prüfungen sind **experimentell**: Sie können Fehler übersehen oder falsch melden und brauchen mit dem stärkeren Modell bis zu eine Minute pro Plan.
 - Der kostenlose Zugang hat Mengenlimits. Ist das Limit erreicht, zeigt die App eine Meldung, und die normalen Prüfungen laufen weiter.
 
 ## Ordner

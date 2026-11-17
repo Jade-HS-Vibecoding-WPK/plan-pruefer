@@ -62,4 +62,8 @@ Zu jedem Plan mit Fehler notieren wir, welcher Fehler eingebaut ist. Die Spalte 
 
 **Noch gebraucht für A7K (Höhe an Raumebenen, KI):** ein Plan `05_A7K_fehler.pdf` mit einem Ebenenwechsel (zum Beispiel Stufe, Podest oder abgesenkter Bereich), bei dem die eigene Höhenkote fehlt, sonst alles in Ordnung. Außerdem hilft ein Plan **mit** Ebenenwechsel und mit Höhenkote als sauberer Gegenfall. Beide werden von Hand in der App mit eingeschalteter KI geprüft.
 
+**Optional für A6 und A6K (Schnittlinien):**
+- `06_A6_fehler.pdf`: bei der Schnittlinie fehlt eine Beschriftung (zum Beispiel nur oben ein "A", unten keins), sonst alles in Ordnung. Der Testlauf prüft diesen Fall schon automatisch mit dem Musterplan, ein echter Plan ist ein Zusatz.
+- `07_A6K_fehler.pdf`: bei der Schnittlinie fehlt das Dreieck für die Blickrichtung (an beiden Enden). Wird von Hand mit eingeschalteter KI geprüft.
+
 Hinweis zur Fläche im Raumstempel: Es zählt die Zahl mit Quadratmeter-Einheit (zum Beispiel `22,50 m²`). Ob davor `NGF:` steht, ist egal.

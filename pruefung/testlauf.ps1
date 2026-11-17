@@ -141,6 +141,21 @@ if (@($script:Pruefungen | Where-Object { $_.Id -eq 'A7' }).Count -gt 0) {
     }
 }
 
+# Selbsttest A1: Nordpfeil (Buchstabe N)
+if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A1' }).Count -gt 0) {
+    $zeilen.Add("")
+    $zeilen.Add("== Selbsttest A1: Nordpfeil")
+    $itemsA1 = @(Get-PdfTextItems $okPlan.FullName)
+    $r = Get-A1Nordpfeil $itemsA1
+    if ($r.Ok) { $richtig++; $zeilen.Add("[richtig]      Musterplan: Nordpfeil erkannt ($($r.Wert))") } else { $falsch++; $zeilen.Add("[FALSCH]       Musterplan: Nordpfeil nicht erkannt") }
+    $ohneN = @($itemsA1 | Where-Object { $_.T -cne 'N' })
+    $r = Get-A1Nordpfeil $ohneN
+    if (-not $r.Ok -and $r.Detail -match 'kein Nordpfeil') { $richtig++; $zeilen.Add("[richtig]      ohne das N wird 'kein Nordpfeil' gemeldet") } else { $falsch++; $zeilen.Add("[FALSCH]       ohne N: Ok=$($r.Ok)") }
+    $nurWoerter = @([pscustomobject]@{ X = 1; Y = 1; T = 'NGF:' }, [pscustomobject]@{ X = 1; Y = 2; T = 'Nord' }, [pscustomobject]@{ X = 1; Y = 3; T = 'n' })
+    $r = Get-A1Nordpfeil $nurWoerter
+    if (-not $r.Ok) { $richtig++; $zeilen.Add("[richtig]      'NGF:', 'Nord' und kleines 'n' zählen nicht als Nordpfeil") } else { $falsch++; $zeilen.Add("[FALSCH]       Wörter wurden als Nordpfeil gezählt") }
+}
+
 # Selbsttest A6: Schnittlinien (Buchstabe an beiden Enden)
 if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A6' }).Count -gt 0) {
     $zeilen.Add("")
@@ -159,7 +174,7 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A6' }).Count -
 
         $keiner = @($itemsA6 | Where-Object { $_ -ne $enden[0] -and $_ -ne $enden[1] })
         $r = @(Get-A6Schnittlinien $keiner | Where-Object { -not $_.Ok })
-        if ($r.Count -eq 1 -and $r[0].Angabe -eq 'Schnittlinie') { $richtig++; $zeilen.Add("[richtig]      ohne Schnittbeschriftung: 'keine Schnittlinie gefunden'") }
+        if ($r.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Schnittlinie ohne Buchstaben ist in Ordnung (kein Befund)") }
         else { $falsch++; $zeilen.Add("[FALSCH]       beide Enden entfernt: $($r.Count) Befunde ($(($r | ForEach-Object { $_.Angabe }) -join ', '))") }
     }
 
@@ -170,7 +185,7 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A6' }).Count -
     $r2 = @(Get-A6Schnittlinien $dicht | Where-Object { -not $_.Ok })
     $waagrecht = @([pscustomobject]@{ X = 100; Y = 300; T = 'C' }, [pscustomobject]@{ X = 600; Y = 303; T = 'C' })
     $r3 = @(Get-A6Schnittlinien $waagrecht)
-    if ($r.Count -eq 1 -and $r[0].Angabe -eq 'Schnittlinie' -and $r2.Count -eq 2 -and @($r3 | Where-Object { $_.Ok }).Count -eq 1 -and @($r3 | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      N ist kein Schnitt, dichte Buchstaben sind kein Paar, waagerechte Schnitte werden erkannt") }
+    if ($r.Count -eq 0 -and $r2.Count -eq 2 -and @($r3 | Where-Object { $_.Ok }).Count -eq 1 -and @($r3 | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      N ist kein Schnitt, dichte Buchstaben sind kein Paar, waagerechte Schnitte werden erkannt") }
     else { $falsch++; $zeilen.Add("[FALSCH]       Sonderfälle: nurN=$($r.Count), dicht=$($r2.Count), waagrecht ok=$(@($r3 | Where-Object { $_.Ok }).Count)") }
 }
 
@@ -201,10 +216,19 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count 
     else { $falsch++; $zeilen.Add("[FALSCH]       A7K: KI-Antwort wurde nicht richtig umgewandelt: $($e | ConvertTo-Json -Compress)") }
 
     # A6K: Antwort der KI wird richtig umgewandelt
-    $antwort6 = '{"schnitte":[{"bezeichnung":"A","lage":"senkrecht in der Mitte","x_prozent":35,"y_prozent":50}]}' | ConvertFrom-Json
+    $antwort6 = '{"anzahl_schnittlinien":1,"probleme":[{"problem":"dreieck_fehlt","bezeichnung":"A","lage":"senkrecht in der Mitte","x_prozent":35,"y_prozent":50}]}' | ConvertFrom-Json
     $e = @(ConvertTo-A6KErgebnisse $antwort6)
-    if ($e.Count -eq 1 -and -not $e[0].Ok -and $e[0].Quelle -eq 'ki' -and $e[0].Angabe -match 'Schnitt A' -and $e[0].Detail -match 'senkrecht') { $richtig++; $zeilen.Add("[richtig]      A6K: KI-Antwort wird zu einem KI-Hinweis mit Schnittbezeichnung") }
+    if ($e.Count -eq 1 -and -not $e[0].Ok -and $e[0].Quelle -eq 'ki' -and $e[0].Angabe -match 'Schnitt A' -and $e[0].Detail -match 'senkrecht' -and $e[0].Detail -match 'Dreieck') { $richtig++; $zeilen.Add("[richtig]      A6K: fehlendes Dreieck wird zu einem KI-Hinweis mit Schnittbezeichnung") }
     else { $falsch++; $zeilen.Add("[FALSCH]       A6K: KI-Antwort wurde nicht richtig umgewandelt: $($e | ConvertTo-Json -Compress)") }
+    $e = @(ConvertTo-A6KErgebnisse ('{"anzahl_schnittlinien":0,"probleme":[]}' | ConvertFrom-Json))
+    if ($e.Count -eq 1 -and $e[0].Angabe -eq 'Schnittlinie' -and $e[0].Detail -match 'keine Schnittlinie') { $richtig++; $zeilen.Add("[richtig]      A6K: keine Schnittlinie im Plan wird gemeldet") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       A6K: 0 Schnittlinien ergab $($e.Count) Befunde") }
+    $e = @(ConvertTo-A6KErgebnisse ('{"anzahl_schnittlinien":2,"probleme":[{"problem":"richtung_unterschiedlich","lage":"waagerecht unten"}]}' | ConvertFrom-Json))
+    if ($e.Count -eq 1 -and $e[0].Detail -match 'unterschiedliche Richtungen') { $richtig++; $zeilen.Add("[richtig]      A6K: unterschiedliche Richtung der Dreiecke wird gemeldet") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       A6K: unterschiedliche Richtung ergab $($e.Count) Befunde") }
+    $e = @(ConvertTo-A6KErgebnisse ('{"anzahl_schnittlinien":1,"probleme":[]}' | ConvertFrom-Json))
+    if ($e.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      A6K: eine Schnittlinie ohne Probleme ergibt keinen Befund") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       A6K: korrekte Schnittlinie ergab $($e.Count) Befunde") }
 
     # Schlüsseldatei lesen (nur Textzeilen, mit erfundenen Werten, kein echter Schlüssel)
     $fakeKey = 'AIzaTESTWERT123'
@@ -221,13 +245,13 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count 
     else { $falsch++; $zeilen.Add("[FALSCH]       Schlüsseldatei falsch gelesen bei: $($schlechte -join ' | ')") }
 
     # 1. Antwort der KI wird richtig in Befunde umgewandelt
-    $antwort = '{"raeume":[{"lage":"links oben, neben dem Flur","x_prozent":12.4,"y_prozent":30}]}' | ConvertFrom-Json
+    $antwort = '{"weitere_raeume":[{"lage":"links oben, neben dem Flur","x_prozent":12.4,"y_prozent":30}]}' | ConvertFrom-Json
     $e = @(ConvertTo-A3KErgebnisse $antwort)
     if ($e.Count -eq 1 -and -not $e[0].Ok -and $e[0].Quelle -eq 'ki' -and $e[0].Detail -match 'links oben' -and $e[0].Detail -match '12 %') { $richtig++; $zeilen.Add("[richtig]      KI-Antwort wird zu einem KI-Hinweis mit Lage") }
     else { $falsch++; $zeilen.Add("[FALSCH]       KI-Antwort wurde nicht richtig umgewandelt: $($e | ConvertTo-Json -Compress)") }
 
     # 2. Leere Liste der KI ergibt keine Befunde
-    $e = @(ConvertTo-A3KErgebnisse ('{"raeume":[]}' | ConvertFrom-Json))
+    $e = @(ConvertTo-A3KErgebnisse ('{"weitere_raeume":[]}' | ConvertFrom-Json))
     if ($e.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      leere KI-Antwort ergibt keine Befunde") }
     else { $falsch++; $zeilen.Add("[FALSCH]       leere KI-Antwort ergab $($e.Count) Befunde") }
 
@@ -245,7 +269,7 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count 
 
     # 4. KI nicht eingeschaltet: es wird keine Anfrage gestellt (Datenschutz)
     $script:TestKiAn = $true; $script:TestKiAufrufe = 0
-    $script:TestKiAntwort = '{"raeume":[{"lage":"rechts unten"}],"bereiche":[],"schnitte":[]}' | ConvertFrom-Json
+    $script:TestKiAntwort = '{"weitere_raeume":[{"lage":"rechts unten"}],"bereiche":[],"anzahl_schnittlinien":1,"probleme":[]}' | ConvertFrom-Json
     $res = @(Invoke-Pruefungen $okPlan.FullName 'entwurf' $false)
     if ($script:TestKiAufrufe -eq 0 -and @($res | Where-Object { $_.Quelle -eq 'ki' }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      KI aus: es wird nichts an die KI gesendet") }
     else { $falsch++; $zeilen.Add("[FALSCH]       KI aus, aber Aufrufe=$($script:TestKiAufrufe)") }
@@ -264,7 +288,7 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count 
     $m = @(Get-Meldungen)
     if ($m.Count -eq $anzahlKi -and $m[0] -match 'Struktur') { $richtig++; $zeilen.Add("[richtig]      falsche KI-Struktur: Meldung statt stillem 'keine Funde'") }
     else { $falsch++; $zeilen.Add("[FALSCH]       falsche KI-Struktur: Meldungen=$($m.Count) ($($m -join ' | '))") }
-    $script:TestKiAntwort = '{"raeume":[{"lage":"rechts unten"}],"bereiche":[],"schnitte":[]}' | ConvertFrom-Json
+    $script:TestKiAntwort = '{"weitere_raeume":[{"lage":"rechts unten"}],"bereiche":[],"anzahl_schnittlinien":1,"probleme":[]}' | ConvertFrom-Json
 
     # 5c. Antworttext aus der Interactions-Antwort (steps) wird gelesen
     $stepsAntwort = '{"steps":[{"type":"thought","signature":"x"},{"type":"model_output","content":[{"type":"text","text":"{\"raeume\":[]}"}]}]}' | ConvertFrom-Json

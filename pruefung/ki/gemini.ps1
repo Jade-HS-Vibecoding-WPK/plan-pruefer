@@ -6,12 +6,13 @@
   Einrichtung (siehe README, Abschnitt "KI-Prüfung einrichten"):
     - Schlüssel von Google AI Studio holen und als erste Zeile in die Datei schluessel.txt im Projektordner schreiben
       (oder die Umgebungsvariable GEMINI_API_KEY setzen). schluessel.txt steht in der .gitignore und wird nie hochgeladen.
-    - Optional zweite Zeile "modell=gemini-3.5-flash-lite" oder Umgebungsvariable PLANPRUEFER_KI_MODELL.
+    - Optional zweite Zeile "modell=gemini-3.8-flash" oder Umgebungsvariable PLANPRUEFER_KI_MODELL.
 
   Wichtig: Der Schlüssel wird nie angezeigt, nie in Meldungen oder Protokolle geschrieben.
 #>
 
-$script:KiStandardModell = 'gemini-3.5-flash-lite'
+# Standardmodell: gemini-3.8-flash. Es erkennt auch unbeschriftete Räume im Bild, das kleinere gemini-3.5-flash-lite hat sie übersehen.
+$script:KiStandardModell = 'gemini-3.8-flash'
 $script:KiApiRevision = '2026-05-20'
 $script:KiBasis = 'https://generativelanguage.googleapis.com/v1beta'
 
@@ -113,15 +114,33 @@ function ConvertFrom-KiJson([string]$text) {
 
 # PDF + Frage an Gemini schicken und eine Antwort im vorgegebenen JSON-Schema zurückbekommen.
 # Wirft einen Fehler mit deutscher Meldung, wenn etwas schiefgeht.
-function Invoke-KiPdfFrage([string]$PdfPfad, [string]$Frage, $Schema) {
+# Denken: '' = Standard des Modells, 'aus' = kein Nachdenken (schnell), 'niedrig' = wenig Nachdenken
+function Invoke-KiPdfFrage([string]$PdfPfad, [string]$Frage, $Schema, [string]$Denken = '') {
     $key = Get-KiSchluessel
     if (-not $key) { throw 'Kein KI-Schlüssel hinterlegt (siehe README, Abschnitt "KI-Prüfung einrichten").' }
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     $b64 = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($PdfPfad))
     $modell = Get-KiModell
+    # Die Datei darf ein PDF oder ein Bild sein (PNG/JPG). Ein Bild sieht die KI wirklich als Bild,
+    # bei einem PDF liest sie vor allem den Text darin.
+    $mime = switch ([System.IO.Path]::GetExtension($PdfPfad).ToLowerInvariant()) { '.png' { 'image/png' } '.jpg' { 'image/jpeg' } '.jpeg' { 'image/jpeg' } default { 'application/pdf' } }
 
+    $genConfig = @{ responseMimeType = 'application/json'; responseJsonSchema = $Schema }
+    if ($Denken -eq 'aus') { $genConfig.thinkingConfig = @{ thinkingBudget = 0 } }
+    elseif ($Denken -eq 'niedrig') { $genConfig.thinkingConfig = @{ thinkingLevel = 'low' } }
     $versuche = @(
         @{
+            Url     = "$script:KiBasis/models/${modell}:generateContent"
+            Headers = @{ 'x-goog-api-key' = $key }
+            Body    = @{
+                contents         = @(@{ parts = @(@{ inline_data = @{ mime_type = $mime; data = $b64 } }, @{ text = $Frage }) })
+                generationConfig = $genConfig
+            }
+        }
+    )
+    if ($mime -eq 'application/pdf') {
+        # Zweiter Weg (nur für PDFs): die neuere Interactions-Schnittstelle
+        $versuche += @{
             Url     = "$script:KiBasis/interactions"
             Headers = @{ 'x-goog-api-key' = $key; 'Api-Revision' = $script:KiApiRevision }
             Body    = @{
@@ -132,32 +151,32 @@ function Invoke-KiPdfFrage([string]$PdfPfad, [string]$Frage, $Schema) {
                 )
                 response_format = @{ type = 'text'; mime_type = 'application/json'; schema = $Schema }
             }
-        },
-        @{
-            Url     = "$script:KiBasis/models/${modell}:generateContent"
-            Headers = @{ 'x-goog-api-key' = $key }
-            Body    = @{
-                contents         = @(@{ parts = @(@{ inline_data = @{ mime_type = 'application/pdf'; data = $b64 } }, @{ text = $Frage }) })
-                generationConfig = @{ responseMimeType = 'application/json'; responseJsonSchema = $Schema }
-            }
-        }
-    )
-
-    $letzterFehler = $null
-    foreach ($v in $versuche) {
-        try {
-            $json = $v.Body | ConvertTo-Json -Depth 20 -Compress
-            $h = $v.Headers.Clone(); $h['Content-Type'] = 'application/json; charset=utf-8'
-            $antwort = Invoke-RestMethod -Uri $v.Url -Method Post -Headers $h -Body ([System.Text.Encoding]::UTF8.GetBytes($json)) -TimeoutSec 180
-            return (ConvertFrom-KiJson (Get-KiAntwortText $antwort))
-        } catch {
-            $f = Get-KiFehlerText $_
-            $letzterFehler = $f
-            # Schlüssel, Limit oder Netz: der zweite Weg würde dasselbe Ergebnis liefern, also sofort abbrechen
-            if ($f.Code -in 401, 403, 429 -or $f.Text -match 'API key') { break }
-            if ($null -eq $f.Code -and $f.Text -notmatch 'Antwort|JSON|Format') { break }
         }
     }
+
+    $letzterFehler = $null
+    $abbrechen = $false
+    foreach ($v in $versuche) {
+        if ($abbrechen) { break }
+        # Bei Überlastung des Dienstes (HTTP 500/503) bis zu zweimal nach einer Pause erneut versuchen
+        for ($versuchNr = 0; $versuchNr -lt 3; $versuchNr++) {
+            try {
+                $json = $v.Body | ConvertTo-Json -Depth 20 -Compress
+                $h = $v.Headers.Clone(); $h['Content-Type'] = 'application/json; charset=utf-8'
+                $antwort = Invoke-RestMethod -Uri $v.Url -Method Post -Headers $h -Body ([System.Text.Encoding]::UTF8.GetBytes($json)) -TimeoutSec $(if ($env:PLANPRUEFER_KI_TIMEOUT) { [int]$env:PLANPRUEFER_KI_TIMEOUT } else { 120 })
+                return (ConvertFrom-KiJson (Get-KiAntwortText $antwort))
+            } catch {
+                $f = Get-KiFehlerText $_
+                $letzterFehler = $f
+                if ($f.Code -in 500, 503 -and $versuchNr -lt 2) { Start-Sleep -Seconds (6 * ($versuchNr + 1)); continue }
+                # Schlüssel, Limit oder Netz: ein anderer Weg würde dasselbe Ergebnis liefern, also sofort abbrechen
+                if ($f.Code -in 401, 403, 429 -or $f.Text -match 'API key') { $abbrechen = $true }
+                if ($null -eq $f.Code -and $f.Text -notmatch 'Antwort|JSON|Format') { $abbrechen = $true }
+                break
+            }
+        }
+    }
+    if ($letzterFehler.Code -in 500, 503) { throw 'Der KI-Dienst ist gerade überlastet. Bitte in ein paar Minuten noch einmal versuchen.' }
     if ($letzterFehler.Text -match 'API key') { throw 'Die KI hat den Schlüssel abgelehnt (ungültig). Bitte schluessel.txt prüfen und einen gültigen Schlüssel aus Google AI Studio eintragen.' }
     switch ($letzterFehler.Code) {
         { $_ -in 401, 403 } { throw "Die KI hat den Schlüssel abgelehnt. Bitte schluessel.txt prüfen. ($($letzterFehler.Text))" }
