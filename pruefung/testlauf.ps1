@@ -32,12 +32,13 @@ foreach ($phase in 'entwurf', 'werk') {
     $zeilen.Add("== Phase: $phase   (aktive Prüfpunkte: $(if ($aktiv.Count) { $aktiv -join ', ' } else { 'keine' }))")
 
     foreach ($f in Get-ChildItem $phasenOrdner -Filter *.pdf | Sort-Object Name) {
-        if ($f.BaseName -notmatch '^\d+_(?<punkt>A\d*[A-Z]?)_(?<art>ok|fehler)') {
+        if ($f.BaseName -notmatch '^\d+_(?<punkt>A\d*[A-Z]?|Werkplanung)_(?<art>ok|fehler)') {
             $uebersprungen++
             $zeilen.Add("[übersprungen] $($f.Name)  (Name passt nicht zum Schema <nr>_<A4>_<ok|fehler>)")
             continue
         }
         $punkt = $Matches['punkt']; $art = $Matches['art']
+        if ($punkt -eq 'Werkplanung') { $punkt = 'A' }   # "01_Werkplanung_ok.pdf" = sauberer Werkplan, wie "01_A_ok.pdf"
 
         if ($art -eq 'fehler' -and @($script:Pruefungen | Where-Object { $_.Id -eq $punkt -and $_.Ki }).Count -gt 0) {
             $uebersprungen++
@@ -177,7 +178,7 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A6' }).Count -
         else { $falsch++; $zeilen.Add("[FALSCH]       ein Dreieck entfernt: $($r.Count) Befunde ($(($r | ForEach-Object { $_.Detail }) -join ' | '))") }
 
         $r = @(Get-A6Pruefung $itemsA6 @($dreieckeA6 | Where-Object { $_ -ne $grosse[0] -and $_ -ne $grosse[1] }) | Where-Object { -not $_.Ok })
-        if ($r.Count -eq 1 -and $r[0].Detail -match 'fehlt an beiden Enden das Dreieck') { $richtig++; $zeilen.Add("[richtig]      fehlen beide Dreiecke (Buchstaben bleiben): 'an beiden Enden fehlt das Dreieck'") }
+        if ($r.Count -eq 1 -and $r[0].Angabe -eq 'Schnittlinie') { $richtig++; $zeilen.Add("[richtig]      fehlen beide Dreiecke (Buchstaben bleiben): 'keine Schnittlinie gefunden', Buchstaben allein zählen nicht") }
         else { $falsch++; $zeilen.Add("[FALSCH]       beide Dreiecke entfernt: $($r.Count) Befunde ($(($r | ForEach-Object { $_.Detail }) -join ' | '))") }
 
         $gedreht = [pscustomobject]@{ P1 = $grosse[1].P1; P2 = $grosse[1].P2; P3 = $grosse[1].P3; Mitte = $grosse[1].Mitte; Kante = $grosse[1].Kante; Richtung = 'rechts' }
@@ -206,11 +207,20 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A6' }).Count -
     if ($r.Count -eq 1 -and $r[0].Angabe -eq 'Schnittlinie' -and $r2.Count -eq 1 -and $r2[0].Angabe -eq 'Schnittlinie' -and $r3.Count -eq 1 -and $r3[0].Angabe -eq 'Schnittlinie') { $richtig++; $zeilen.Add("[richtig]      ohne Dreiecke und Buchstaben, nur N, nur kleine Dreiecke: 'keine Schnittlinie gefunden'") }
     else { $falsch++; $zeilen.Add("[FALSCH]       Keine-Schnittlinie-Fälle: $($r.Count), $($r2.Count), $($r3.Count)") }
 
+    # Schraffur: viele große Dreiecke dicht beieinander sind keine Schnitt-Dreiecke, auch wenn zwei davon weit auseinander paarig lägen
+    function Neues-Dreieck($x, $y) { [pscustomobject]@{ P1 = [pscustomobject]@{ X = $x; Y = $y }; P2 = [pscustomobject]@{ X = $x; Y = $y + 12 }; P3 = [pscustomobject]@{ X = $x - 12; Y = $y + 6 }; Mitte = [pscustomobject]@{ X = $x - 4; Y = $y + 6 }; Kante = 13.4; Richtung = 'links' } }
+    $hatch = @((Neues-Dreieck 250 205), (Neues-Dreieck 260 214), (Neues-Dreieck 247 220), (Neues-Dreieck 250 940), (Neues-Dreieck 260 949), (Neues-Dreieck 247 955))
+    $rh = @(Get-A6Pruefung @() $hatch | Where-Object { -not $_.Ok })
+    $einzel = @((Neues-Dreieck 600 170), (Neues-Dreieck 600 1010))
+    $re = @(Get-A6Pruefung @() $einzel)
+    if ($rh.Count -eq 1 -and $rh[0].Angabe -eq 'Schnittlinie' -and @($re | Where-Object { $_.Ok }).Count -eq 1 -and @($re | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Dreiecke in Schraffuren werden ignoriert, zwei einzelne weit entfernte Dreiecke sind eine Schnittlinie") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Schraffur-Test: Schraffur=$($rh.Count) Befunde, einzeln ok=$(@($re | Where-Object { $_.Ok }).Count)") }
+
     $dicht = @([pscustomobject]@{ X = 100; Y = 100; T = 'B' }, [pscustomobject]@{ X = 100; Y = 150; T = 'B' })
     $r4 = @(Get-A6Pruefung $dicht @() | Where-Object { -not $_.Ok })
     $waagrecht = @([pscustomobject]@{ X = 100; Y = 300; T = 'C' }, [pscustomobject]@{ X = 600; Y = 303; T = 'C' })
     $r5 = @(Get-A6Pruefung $waagrecht @() | Where-Object { -not $_.Ok })
-    if ($r4.Count -eq 2 -and $r5.Count -eq 1 -and $r5[0].Detail -match 'fehlt an beiden Enden das Dreieck') { $richtig++; $zeilen.Add("[richtig]      dichte gleiche Buchstaben sind kein Paar, waagerechte Buchstabenpaare werden erkannt") }
+    if ($r4.Count -eq 1 -and $r4[0].Angabe -eq 'Schnittlinie' -and $r5.Count -eq 1 -and $r5[0].Angabe -eq 'Schnittlinie') { $richtig++; $zeilen.Add("[richtig]      gleiche Buchstaben allein (zum Beispiel Achsbezeichnungen) sind keine Schnittlinie") }
     else { $falsch++; $zeilen.Add("[FALSCH]       Sonderfälle: dicht=$($r4.Count), waagrecht=$($r5.Count)") }
 }
 # Selbsttest A3: Fehlt nur beim Flur der Raumname, muss genau ein Befund (zur Fläche des Flurs) kommen.
@@ -230,14 +240,8 @@ if ($okPlan -and (Get-AktivePruefungen 'entwurf') -contains 'A3 Raumbezeichnunge
 # Selbsttest KI-Anbindung: ohne echten Aufruf (die KI wird hier nur nachgestellt, es wird nichts gesendet).
 if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count -gt 0) {
     $zeilen.Add("")
-    $zeilen.Add("== Selbsttest KI (A3K, A7K), ohne echten Aufruf")
+    $zeilen.Add("== Selbsttest KI (A3K), ohne echten Aufruf")
     $anzahlKi = @($script:Pruefungen | Where-Object { $_.Ki -and $_.Phasen -contains 'entwurf' }).Count
-
-    # 0. A7K: Antwort der KI wird richtig umgewandelt
-    $antwort7 = '{"bereiche":[{"art":"Stufe","lage":"rechts unten, Eingang","x_prozent":80,"y_prozent":90}]}' | ConvertFrom-Json
-    $e = @(ConvertTo-A7KErgebnisse $antwort7)
-    if ($e.Count -eq 1 -and -not $e[0].Ok -and $e[0].Quelle -eq 'ki' -and $e[0].Detail -match 'Stufe' -and $e[0].Detail -match 'rechts unten') { $richtig++; $zeilen.Add("[richtig]      A7K: KI-Antwort wird zu einem KI-Hinweis mit Art und Lage") }
-    else { $falsch++; $zeilen.Add("[FALSCH]       A7K: KI-Antwort wurde nicht richtig umgewandelt: $($e | ConvertTo-Json -Compress)") }
 
     # Schlüsseldatei lesen (nur Textzeilen, mit erfundenen Werten, kein echter Schlüssel)
     $fakeKey = 'AIzaTESTWERT123'

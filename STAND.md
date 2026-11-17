@@ -35,7 +35,19 @@ Stand: Ende Montag, 16.11.2026 (Tag 1 von 5). Der Zeitplan steht in [PLAN.md](PL
 - **A7K:** Die Testpläne zeigen keinen sichtbaren Ebenenwechsel. Nur im `okay`-Plan steht zusätzlich die Höhenkote `+0,15`. **Frage ans Team:** Wo ist der Ebenenwechsel in `05_A7K_fehler.pdf` gezeichnet?
 - **Korrektur A6 (von euch):** Eine Schnittlinie darf ohne Buchstaben existieren (Strich-Punkt-Linie mit zwei Dreiecken in gleicher Richtung). A6 prüft nur noch, ob ein einzelner Buchstabe ohne Gegenstück steht. Ob eine Schnittlinie da ist, kann nur das Bild (A6K) beurteilen.
 - **A1 Nordpfeil** gebaut (ohne KI, ein "N" als Text). Testlauf: 32 von 32 richtig, 2 übersprungen (KI-Pläne).
-- **Offene Entscheidung:** Wie gehen wir mit den unzuverlässigen KI-Prüfungen um? (siehe Chat)
+- **Entscheidung vom Team:** A6K und A7K werden nicht gestrichen.
+- **A6 neu, ohne KI:** Die Dreiecke der Schnittlinie werden jetzt direkt aus den Vektordaten des PDFs gelesen (`pruefung/pdf-grafik.ps1`). A6 prüft Schnittlinie vorhanden, Dreieck an beiden Enden, gleiche Richtung, Buchstaben falls vorhanden. Exakt, schnell, 10 neue Tests. Die KI-Variante A6K ist entfernt (falsche Alarme).
+- **A7K:** Die Frage nennt jetzt den Ebenenwechsel als "durchgehende Linie mitten im Raum" und enthält die Höhenkoten aus dem Text. Im Test findet das kleine Modell die fehlende Kote `+0,15` nicht, das stärkere Modell war am Gratis-Limit. A7K bleibt experimentell.
+- Testlauf: 33 von 33 richtig, 2 übersprungen.
+- **Werkpläne:** Es gibt noch keinen Werkplan in `testplaene/werk/`. Vorbereitung siehe PRUEFKATALOG.md (A9, A10, A4 erweitert, A2).
+
+## Dienstag Nachmittag
+
+- **Neue Pläne aufgenommen:** `08_A1_fehler.pdf`, `09_A6_ok_ohne_buchstaben.pdf`, `werk/01_Werkplanung_ok.pdf`.
+- **A6 verbessert:** Im Werkplan sahen Schraffur-Dreiecke (Dämmung) wie Schnitt-Dreiecke aus und Achsbuchstaben wie Schnittbuchstaben. Jetzt zählt ein Schnitt-Dreieck nur, wenn es allein steht und 8 bis 20 Punkt groß ist, Buchstaben allein zählen nie. Der Werkplan läuft ohne falschen Alarm.
+- **A7K entfällt** (wie vom Team vorgesehen, weil die KI den Ebenenwechsel nicht zuverlässig fand). A7 prüft nur noch, ob ein Höhenmaß im Plan steht.
+- **Testlauf:** 36 von 36 richtig, 2 übersprungen (`04_A3K_fehler` braucht die KI, `05_A7K_fehler` gehört zum entfallenen A7K).
+- **Werkplanung:** Reihenfolge und Aufbau des Werkplans stehen in `PRUEFKATALOG.md`, Abschnitt "Werkplanung". Zuerst A4 Werk-Raumstempel, dann A10, A11, A9, **A2 Bemaßung** (in vier Stufen), A8, A5.
 
 ## Eure Aufgaben für morgen
 

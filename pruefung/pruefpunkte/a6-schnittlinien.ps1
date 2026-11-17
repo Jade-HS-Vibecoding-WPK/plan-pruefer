@@ -16,15 +16,18 @@
 
   Grenzen:
     - Es werden nur senkrechte und waagerechte Schnittlinien mit rechtwinklig angeordneten Dreiecken erkannt.
-    - Als Schnitt-Dreieck zählt eine Kantenlänge ab 8 Punkt. Kleinere Dreiecke (Maßketten, Achsen) werden ignoriert.
-    - In Werkplänen tragen auch Achsen gleiche Buchstaben an beiden Enden. A6 sieht sie als Schnittbuchstaben,
-      meldet aber nur, wenn ein einzelner Buchstabe ohne Gegenstück bleibt.
+    - Als Schnitt-Dreieck zählt eine Kantenlänge ab 8 Punkt, und es muss ALLEIN stehen: Dreiecke in Schraffuren
+      (zum Beispiel Dämmung im Werkplan) liegen dicht beieinander und werden ignoriert.
+    - Buchstaben allein zählen nie als Schnitt. Im Werkplan tragen auch Achsen gleiche Buchstaben an beiden Enden.
+      Ein Buchstabe wird nur beachtet, wenn er neben einem Schnitt-Dreieck steht.
 #>
 
 $script:A6_DreieckMinKante = 8      # Mindestkantenlänge eines Schnitt-Dreiecks (Punkt im PDF)
+$script:A6_DreieckMaxKante = 20     # Obergrenze, größere Dreiecke (Eingangspfeil) sind keine Schnitt-Dreiecke
 $script:A6_MinAbstand = 100         # Mindestabstand der beiden Enden (Punkt)
 $script:A6_Linientoleranz = 8       # so genau müssen die beiden Enden auf einer Linie liegen
 $script:A6_BuchstabenNaehe = 45     # so nah muss ein Buchstabe an einem Dreieck stehen, um dazuzugehören
+$script:A6_Einzeln = 30             # so weit muss ein Schnitt-Dreieck von anderen großen Dreiecken entfernt sein (sonst Schraffur)
 
 function Get-A6Abstand($a, $b) { [math]::Sqrt([math]::Pow($a.X - $b.X, 2) + [math]::Pow($a.Y - $b.Y, 2)) }
 
@@ -41,7 +44,10 @@ function Get-A6Pruefung($items, $dreiecke) {
     $ergebnisse = New-Object System.Collections.Generic.List[object]
 
     # Große Dreiecke zu Paaren verbinden
-    $gross = @($dreiecke | Where-Object { $_.Kante -ge $script:A6_DreieckMinKante })
+    # Nicht zu klein (Maßketten) und nicht zu groß (zum Beispiel der Eingangspfeil mit etwa 28 Punkt)
+    $alleGross = @($dreiecke | Where-Object { $_.Kante -ge $script:A6_DreieckMinKante -and $_.Kante -le $script:A6_DreieckMaxKante })
+    # Dreiecke in Schraffuren liegen dicht beieinander. Ein Schnitt-Dreieck steht allein.
+    $gross = @($alleGross | Where-Object { $d = $_; @($alleGross | Where-Object { $_ -ne $d -and (Get-A6Abstand $_.Mitte $d.Mitte) -le $script:A6_Einzeln }).Count -eq 0 })
     $benutzt = New-Object System.Collections.Generic.HashSet[object]
     $paare = New-Object System.Collections.Generic.List[object]
     for ($i = 0; $i -lt $gross.Count; $i++) {
@@ -94,35 +100,12 @@ function Get-A6Pruefung($items, $dreiecke) {
         }
     }
 
-    # 2. Buchstabenpaare ohne zwei Dreiecke: ein Ende ohne Dreieck
-    $uebrig = @($buchstaben | Where-Object { -not $buchstabeVerwendet.Contains($_) })
-    foreach ($gruppe in ($uebrig | Group-Object T | Sort-Object Name)) {
-        $offen = New-Object System.Collections.Generic.List[object]
-        foreach ($b in $gruppe.Group) { $offen.Add($b) }
-        $i = 0
-        while ($i -lt $offen.Count) {
-            $partner = $null
-            for ($j = $i + 1; $j -lt $offen.Count; $j++) { if (Test-A6AufLinie $offen[$i] $offen[$j]) { $partner = $j; break } }
-            if ($null -ne $partner) {
-                $a = $offen[$i]; $b = $offen[$partner]
-                $dA = $gross | Where-Object { -not $benutzt.Contains($_) -and (Get-A6Abstand $_.Mitte $a) -le $script:A6_BuchstabenNaehe } | Select-Object -First 1
-                $dB = $gross | Where-Object { -not $benutzt.Contains($_) -and (Get-A6Abstand $_.Mitte $b) -le $script:A6_BuchstabenNaehe } | Select-Object -First 1
-                $anzahl = @($dA, $dB | Where-Object { $_ }).Count
-                if ($anzahl -eq 2) {
-                    # beide Enden haben ein Dreieck, aber sie bilden kein Paar (andere Größe)
-                    $ergebnisse.Add((New-Result "Schnitt $($gruppe.Name)" $true "Buchstabe $($gruppe.Name) an beiden Enden" '' $a.X $a.Y))
-                } else {
-                    $ende = if ($anzahl -eq 1) { 'an einem Ende' } else { 'an beiden Enden' }
-                    $ergebnisse.Add((New-Result "Schnitt $($gruppe.Name)" $false '' "Bei der Schnittlinie $($gruppe.Name) fehlt $ende das Dreieck für die Blickrichtung." $a.X $a.Y))
-                }
-                $offen.RemoveAt($partner); $offen.RemoveAt($i)
-            } else { $i++ }
-        }
-        foreach ($rest in $offen) {
-            $ergebnisse.Add((New-Result "Schnitt $($rest.T)" $false '' "Die Schnittbezeichnung '$($rest.T)' steht nur an einem Ende. Eine Schnittlinie braucht an beiden Enden dieselbe Bezeichnung." $rest.X $rest.Y))
-        }
+    # 2. Einzelnes Dreieck neben einem Buchstaben ohne Gegenstück: die Schnittlinie ist nur an einem Ende gezeichnet
+    foreach ($d in @($gross | Where-Object { -not $benutzt.Contains($_) })) {
+        $b = Get-NaechsterBuchstabe $d.Mitte
+        if (-not $b) { continue }   # ein einzelnes Dreieck ohne Buchstaben kann ein anderes Symbol sein
+        $ergebnisse.Add((New-Result "Schnitt $($b.T)" $false '' "Bei der Schnittlinie $($b.T) fehlt an einem Ende das Dreieck für die Blickrichtung (nur ein Dreieck gefunden)." $d.Mitte.X $d.Mitte.Y))
     }
-
     # 3. Gar keine Schnittlinie
     if ($ergebnisse.Count -eq 0) {
         $ergebnisse.Add((New-Result 'Schnittlinie' $false '' 'Es wurde keine Schnittlinie gefunden (gesucht: Strich-Punkt-Linie mit zwei ausgefüllten Dreiecken an den Enden).'))
