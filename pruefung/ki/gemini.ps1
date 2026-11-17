@@ -15,13 +15,38 @@ $script:KiStandardModell = 'gemini-3.5-flash-lite'
 $script:KiApiRevision = '2026-05-20'
 $script:KiBasis = 'https://generativelanguage.googleapis.com/v1beta'
 
+# Platzhalter aus der Vorlage zählt nicht als Schlüssel.
+$script:KiPlatzhalter = 'HIER-DEN-SCHLUESSEL-EINFUEGEN'
+
+# Liest schluessel.txt (oder schluessel.env, .env). Erlaubt sind zwei Schreibweisen:
+#   AIza...                    (nur der Schlüssel in einer Zeile)
+#   GEMINI_API_KEY=AIza...     (".env"-Schreibweise, auch GOOGLE_API_KEY, API_KEY, KEY)
+function Get-KiSchluesselAusZeilen($zeilen) {
+    foreach ($z in @($zeilen | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') })) {
+        $wert = $null
+        if ($z -match '^(?i:GEMINI_API_KEY|GOOGLE_API_KEY|API_KEY|KEY|SCHLUESSEL)\s*=\s*(.+)$') { $wert = $Matches[1] }
+        elseif ($z -notmatch '^\w+\s*=') { $wert = $z }
+        if ($wert) {
+            $wert = $wert.Trim().Trim('"').Trim("'").Trim()
+            if ($wert -and $wert -ne $script:KiPlatzhalter) { return $wert }
+        }
+    }
+    return $null
+}
+
 function Get-KiEinstellung([string]$Name) {
-    $datei = Join-Path $PSScriptRoot '..\..\schluessel.txt'
-    if (-not (Test-Path $datei)) { return $null }
-    $zeilen = @(Get-Content $datei -Encoding UTF8 | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') })
-    if ($Name -eq 'schluessel') { return ($zeilen | Where-Object { $_ -notmatch '^\w+=' } | Select-Object -First 1) }
-    $z = $zeilen | Where-Object { $_ -match "^$Name=" } | Select-Object -First 1
-    if ($z) { return $z.Substring($Name.Length + 1).Trim() }
+    foreach ($dateiName in 'schluessel.txt', 'schluessel.env', '.env') {
+        $datei = Join-Path $PSScriptRoot "..\..\$dateiName"
+        if (-not (Test-Path $datei)) { continue }
+        $zeilen = @(Get-Content $datei -Encoding UTF8)
+        if ($Name -eq 'schluessel') {
+            $k = Get-KiSchluesselAusZeilen $zeilen
+            if ($k) { return $k }
+        } else {
+            $z = @($zeilen | ForEach-Object { $_.Trim() } | Where-Object { $_ -match "^$Name\s*=" }) | Select-Object -First 1
+            if ($z) { return ($z.Substring($z.IndexOf('=') + 1)).Trim().Trim('"').Trim("'") }
+        }
+    }
     return $null
 }
 
@@ -59,6 +84,11 @@ function Get-KiFehlerText($ex) {
 
 function Get-KiAntwortText($r) {
     if ($r.output_text) { return [string]$r.output_text }
+    # Interactions-API: Schritte (steps), der Schritt "model_output" enthält den Antworttext
+    if ($r.steps) {
+        $teile = @($r.steps | Where-Object { $_.type -eq 'model_output' } | ForEach-Object { @($_.content) | ForEach-Object { if ($_.text) { [string]$_.text } } })
+        if ($teile.Count -gt 0) { return ($teile -join '') }
+    }
     foreach ($feld in 'outputs', 'output') {
         if ($r.$feld) {
             $teile = @($r.$feld | ForEach-Object {
@@ -107,8 +137,8 @@ function Invoke-KiPdfFrage([string]$PdfPfad, [string]$Frage, $Schema) {
             Url     = "$script:KiBasis/models/${modell}:generateContent"
             Headers = @{ 'x-goog-api-key' = $key }
             Body    = @{
-                contents         = @(@{ parts = @(@{ inline_data = @{ mime_type = 'application/pdf'; data = $b64 } }, @{ text = $Frage + "`nAntworte ausschließlich mit JSON." }) })
-                generationConfig = @{ responseMimeType = 'application/json' }
+                contents         = @(@{ parts = @(@{ inline_data = @{ mime_type = 'application/pdf'; data = $b64 } }, @{ text = $Frage }) })
+                generationConfig = @{ responseMimeType = 'application/json'; responseJsonSchema = $Schema }
             }
         }
     )

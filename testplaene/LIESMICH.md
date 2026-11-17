@@ -54,10 +54,12 @@ Zu jedem Plan mit Fehler notieren wir, welcher Fehler eingebaut ist. Die Spalte 
 | Datei | Phase | Eingebauter Fehler | Gefunden? |
 |-------|-------|--------------------|-----------|
 | entwurf/01_A4_fehler.pdf | Entwurf | Bei allen Räumen fehlt die Flächenangabe im Raumstempel | ja, alle 9 Räume |
-| entwurf/01_A4_fehler.pdf | Entwurf | **Zusätzlich fehlt versehentlich die Höhenangabe ±0,00** neben dem Flur. Das gilt als bekannter Zusatzfehler und zugleich als Fehlerfall für A7 (Höhenangaben). Im Testlauf zählt A7 dort nicht als falscher Alarm. | noch nicht (A7 ungebaut) |
+| entwurf/01_A4_fehler.pdf | Entwurf | **Zusätzlich fehlt versehentlich die Höhenangabe ±0,00** neben dem Flur. Das gilt als bekannter Zusatzfehler und zugleich als Fehlerfall für A7 (Höhenangaben). Im Testlauf zählt A7 dort nicht als falscher Alarm. | ja, A7 meldet: keine Höhenkote im Plan |
 
 | entwurf/03_A3_fehler.pdf | Entwurf | Bei allen Räumen fehlt der Raumname, die Flächen stehen noch da | ja, alle 9 Flächen ohne Namen |
 
 **Noch gebraucht für A3K (Raum ohne Name und Fläche, KI):** ein Plan `04_A3K_fehler.pdf`, bei dem bei **einem** Raum der komplette Raumstempel (Name und Fläche) gelöscht ist, sonst alles in Ordnung. Dieser Plan wird im Testlauf übersprungen, weil er die echte KI bräuchte. Er wird von Hand in der App mit eingeschalteter KI geprüft.
+
+**Noch gebraucht für A7K (Höhe an Raumebenen, KI):** ein Plan `05_A7K_fehler.pdf` mit einem Ebenenwechsel (zum Beispiel Stufe, Podest oder abgesenkter Bereich), bei dem die eigene Höhenkote fehlt, sonst alles in Ordnung. Außerdem hilft ein Plan **mit** Ebenenwechsel und mit Höhenkote als sauberer Gegenfall. Beide werden von Hand in der App mit eingeschalteter KI geprüft.
 
 Hinweis zur Fläche im Raumstempel: Es zählt die Zahl mit Quadratmeter-Einheit (zum Beispiel `22,50 m²`). Ob davor `NGF:` steht, ist egal.

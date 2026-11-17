@@ -44,6 +44,10 @@ $script:A3K_Schema = @{
 
 # Wandelt die Antwort der KI in Ergebnisse um (getrennt vom Aufruf, damit es ohne echte KI getestet werden kann).
 function ConvertTo-A3KErgebnisse($antwort) {
+    # Hat die KI nicht die vorgegebene Struktur geliefert, darf das nie als "keine Funde" durchgehen.
+    if ($null -eq $antwort -or -not ($antwort.PSObject.Properties.Name -contains 'raeume')) {
+        throw "Die KI-Antwort hatte nicht die erwartete Struktur (Feld 'raeume' fehlt)."
+    }
     foreach ($r in @($antwort.raeume)) {
         if ($null -eq $r) { continue }
         $lage = if ($r.lage) { [string]$r.lage } else { 'Lage unbekannt' }

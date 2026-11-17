@@ -11,3 +11,8 @@ schluessel.txt
 # Die ins Archiv verschobenen Testpläne bleiben ebenfalls nur lokal
 archiv/testplaene/*
 !archiv/testplaene/LIESMICH.md
+
+# Alle Dateien mit Schlüsseln (auch unter anderem Namen) bleiben lokal
+*.env
+schluessel.*
+!schluessel.beispiel.txt

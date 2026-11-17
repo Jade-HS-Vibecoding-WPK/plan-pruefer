@@ -18,7 +18,7 @@ $ordner = Join-Path $PSScriptRoot '..\testplaene'
 # Befunde dieser Prüfpunkte zählen dort nicht als falscher Alarm.
 $bekannteZusatzfehler = @{
     # In diesem Plan fehlt auch die Höhenangabe ±0,00 (Versehen, siehe testplaene\LIESMICH.md).
-    # Sobald A7 (Höhenangaben) gebaut ist, ist dieser Plan zugleich der Fehlerfall für A7.
+    # A7 (Höhenangaben) ist gebaut: dieser Plan ist zugleich der Fehlerfall für A7 (siehe Selbsttest A7).
     '01_A4_fehler' = @('A7')
 }
 $richtig = 0; $falsch = 0; $uebersprungen = 0
@@ -114,6 +114,66 @@ if ($okPlan -and (Get-AktivePruefungen 'entwurf') -contains 'A4 Raumflächen') {
     }
 }
 
+# Selbsttest A7: Höhenkote in verschiedenen Schreibweisen erkannt, und der Plan 01_A4_fehler (ohne ±0,00) wird gemeldet.
+if (@($script:Pruefungen | Where-Object { $_.Id -eq 'A7' }).Count -gt 0) {
+    $zeilen.Add("")
+    $zeilen.Add("== Selbsttest A7: Höhenangaben")
+    $schreibweisen = '±0,00', '+0,00', '-0,15', '+ 2,76', '±0.00', 'OKFF +2,76', 'OKFF 2,76', 'OK FFB -0,03'
+    $fehlerSchreibweisen = @()
+    foreach ($s in $schreibweisen) {
+        $r = Get-A7Hoehenangaben @([pscustomobject]@{ X = 1; Y = 1; T = $s })
+        if (-not $r.Ok) { $fehlerSchreibweisen += $s }
+    }
+    if ($fehlerSchreibweisen.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      $($schreibweisen.Count) Schreibweisen einer Höhenkote werden erkannt") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       nicht erkannt: $($fehlerSchreibweisen -join ' | ')") }
+
+    # Zahlen, die keine Höhenkote sind, dürfen nicht zählen (Maßzahlen, Flächen, Datum, Plannummer)
+    $keine = '1,49', '22,50', '16.11.2026', '1:100', 'G01', '12345', '2,51', 'NGF:'
+    $zuviel = @($keine | Where-Object { (Get-A7Hoehenangaben @([pscustomobject]@{ X = 1; Y = 1; T = $_ })).Ok })
+    if ($zuviel.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Maßzahlen, Flächen und Datum werden nicht als Höhenkote gezählt") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       fälschlich als Höhenkote erkannt: $($zuviel -join ' | ')") }
+
+    $fehlerPlan = Join-Path $ordner 'entwurf\01_A4_fehler.pdf'
+    if (Test-Path $fehlerPlan) {
+        $r = @(Invoke-Pruefungen $fehlerPlan 'entwurf' | Where-Object { $_.Punkt -eq 'A7' -and -not $_.Ok })
+        if ($r.Count -eq 1) { $richtig++; $zeilen.Add("[richtig]      01_A4_fehler.pdf: die fehlende Höhenangabe ±0,00 wird als A7-Befund gemeldet") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       01_A4_fehler.pdf: $($r.Count) A7-Befunde statt 1") }
+    }
+}
+
+# Selbsttest A6: Schnittlinien (Buchstabe an beiden Enden)
+if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A6' }).Count -gt 0) {
+    $zeilen.Add("")
+    $zeilen.Add("== Selbsttest A6: Schnittlinien")
+    $itemsA6 = @(Get-PdfTextItems $okPlan.FullName)
+    $r = @(Get-A6Schnittlinien $itemsA6)
+    if (@($r | Where-Object { $_.Ok -and $_.Angabe -eq 'Schnitt A' }).Count -eq 1 -and @($r | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Musterplan: Schnitt A an beiden Enden erkannt, keine Befunde") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Musterplan: $(($r | ForEach-Object { "$($_.Angabe)=$($_.Ok)" }) -join ', ')") }
+
+    $enden = @($itemsA6 | Where-Object { $_.T -ceq 'A' } | Sort-Object Y)
+    if ($enden.Count -eq 2) {
+        $einEnde = @($itemsA6 | Where-Object { $_ -ne $enden[1] })
+        $r = @(Get-A6Schnittlinien $einEnde | Where-Object { -not $_.Ok })
+        if ($r.Count -eq 1 -and $r[0].Angabe -eq 'Schnitt A') { $richtig++; $zeilen.Add("[richtig]      fehlt ein Ende, wird 'Schnitt A nur an einem Ende' gemeldet") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       ein Ende entfernt: $($r.Count) Befunde ($(($r | ForEach-Object { $_.Angabe }) -join ', '))") }
+
+        $keiner = @($itemsA6 | Where-Object { $_ -ne $enden[0] -and $_ -ne $enden[1] })
+        $r = @(Get-A6Schnittlinien $keiner | Where-Object { -not $_.Ok })
+        if ($r.Count -eq 1 -and $r[0].Angabe -eq 'Schnittlinie') { $richtig++; $zeilen.Add("[richtig]      ohne Schnittbeschriftung: 'keine Schnittlinie gefunden'") }
+        else { $falsch++; $zeilen.Add("[FALSCH]       beide Enden entfernt: $($r.Count) Befunde ($(($r | ForEach-Object { $_.Angabe }) -join ', '))") }
+    }
+
+    # Ein einzelnes N (Nordpfeil) ist kein Schnitt; zwei gleiche Buchstaben dicht beieinander sind kein Schnitt
+    $nurN = @([pscustomobject]@{ X = 1000; Y = 60; T = 'N' })
+    $r = @(Get-A6Schnittlinien $nurN | Where-Object { -not $_.Ok })
+    $dicht = @([pscustomobject]@{ X = 100; Y = 100; T = 'B' }, [pscustomobject]@{ X = 100; Y = 150; T = 'B' })
+    $r2 = @(Get-A6Schnittlinien $dicht | Where-Object { -not $_.Ok })
+    $waagrecht = @([pscustomobject]@{ X = 100; Y = 300; T = 'C' }, [pscustomobject]@{ X = 600; Y = 303; T = 'C' })
+    $r3 = @(Get-A6Schnittlinien $waagrecht)
+    if ($r.Count -eq 1 -and $r[0].Angabe -eq 'Schnittlinie' -and $r2.Count -eq 2 -and @($r3 | Where-Object { $_.Ok }).Count -eq 1 -and @($r3 | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      N ist kein Schnitt, dichte Buchstaben sind kein Paar, waagerechte Schnitte werden erkannt") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Sonderfälle: nurN=$($r.Count), dicht=$($r2.Count), waagrecht ok=$(@($r3 | Where-Object { $_.Ok }).Count)") }
+}
+
 # Selbsttest A3: Fehlt nur beim Flur der Raumname, muss genau ein Befund (zur Fläche des Flurs) kommen.
 if ($okPlan -and (Get-AktivePruefungen 'entwurf') -contains 'A3 Raumbezeichnungen') {
     $zeilen.Add("")
@@ -131,7 +191,34 @@ if ($okPlan -and (Get-AktivePruefungen 'entwurf') -contains 'A3 Raumbezeichnunge
 # Selbsttest KI-Anbindung: ohne echten Aufruf (die KI wird hier nur nachgestellt, es wird nichts gesendet).
 if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count -gt 0) {
     $zeilen.Add("")
-    $zeilen.Add("== Selbsttest KI (A3K), ohne echten Aufruf")
+    $zeilen.Add("== Selbsttest KI (A3K, A7K), ohne echten Aufruf")
+    $anzahlKi = @($script:Pruefungen | Where-Object { $_.Ki -and $_.Phasen -contains 'entwurf' }).Count
+
+    # 0. A7K: Antwort der KI wird richtig umgewandelt
+    $antwort7 = '{"bereiche":[{"art":"Stufe","lage":"rechts unten, Eingang","x_prozent":80,"y_prozent":90}]}' | ConvertFrom-Json
+    $e = @(ConvertTo-A7KErgebnisse $antwort7)
+    if ($e.Count -eq 1 -and -not $e[0].Ok -and $e[0].Quelle -eq 'ki' -and $e[0].Detail -match 'Stufe' -and $e[0].Detail -match 'rechts unten') { $richtig++; $zeilen.Add("[richtig]      A7K: KI-Antwort wird zu einem KI-Hinweis mit Art und Lage") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       A7K: KI-Antwort wurde nicht richtig umgewandelt: $($e | ConvertTo-Json -Compress)") }
+
+    # A6K: Antwort der KI wird richtig umgewandelt
+    $antwort6 = '{"schnitte":[{"bezeichnung":"A","lage":"senkrecht in der Mitte","x_prozent":35,"y_prozent":50}]}' | ConvertFrom-Json
+    $e = @(ConvertTo-A6KErgebnisse $antwort6)
+    if ($e.Count -eq 1 -and -not $e[0].Ok -and $e[0].Quelle -eq 'ki' -and $e[0].Angabe -match 'Schnitt A' -and $e[0].Detail -match 'senkrecht') { $richtig++; $zeilen.Add("[richtig]      A6K: KI-Antwort wird zu einem KI-Hinweis mit Schnittbezeichnung") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       A6K: KI-Antwort wurde nicht richtig umgewandelt: $($e | ConvertTo-Json -Compress)") }
+
+    # Schlüsseldatei lesen (nur Textzeilen, mit erfundenen Werten, kein echter Schlüssel)
+    $fakeKey = 'AIzaTESTWERT123'
+    $faelle = @(
+        @{ Name = 'Platzhalter zählt nicht';       Zeilen = @('# Kommentar', 'HIER-DEN-SCHLUESSEL-EINFUEGEN'); Soll = $null },
+        @{ Name = 'nur der Schlüssel';             Zeilen = @('# Kommentar', '', $fakeKey);                    Soll = $fakeKey },
+        @{ Name = 'GEMINI_API_KEY=...';            Zeilen = @("GEMINI_API_KEY=$fakeKey");                      Soll = $fakeKey },
+        @{ Name = 'mit Anführungszeichen und Leerzeichen'; Zeilen = @("  GEMINI_API_KEY = `"$fakeKey`"  "); Soll = $fakeKey },
+        @{ Name = 'Platzhalter hinter KEY=';       Zeilen = @('GEMINI_API_KEY=HIER-DEN-SCHLUESSEL-EINFUEGEN'); Soll = $null },
+        @{ Name = 'nur modell=... ist kein Schlüssel'; Zeilen = @('modell=gemini-3.5-flash-lite');            Soll = $null }
+    )
+    $schlechte = @($faelle | Where-Object { (Get-KiSchluesselAusZeilen $_.Zeilen) -ne $_.Soll } | ForEach-Object { $_.Name })
+    if ($schlechte.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Schlüsseldatei: alle $($faelle.Count) Schreibweisen werden richtig gelesen") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Schlüsseldatei falsch gelesen bei: $($schlechte -join ' | ')") }
 
     # 1. Antwort der KI wird richtig in Befunde umgewandelt
     $antwort = '{"raeume":[{"lage":"links oben, neben dem Flur","x_prozent":12.4,"y_prozent":30}]}' | ConvertFrom-Json
@@ -153,12 +240,12 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count 
     $script:TestKiAn = $false
     $res = @(Invoke-Pruefungen $okPlan.FullName 'entwurf' $true)
     $m = @(Get-Meldungen)
-    if ($script:TestKiAufrufe -eq 0 -and $m.Count -eq 1 -and $m[0] -match 'kein KI-Schlüssel' -and @($res | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      ohne Schlüssel: keine KI-Anfrage, eine verständliche Meldung") }
+    if ($script:TestKiAufrufe -eq 0 -and $m.Count -eq $anzahlKi -and $m[0] -match 'kein KI-Schlüssel' -and @($res | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      ohne Schlüssel: keine KI-Anfrage, eine verständliche Meldung") }
     else { $falsch++; $zeilen.Add("[FALSCH]       ohne Schlüssel: Aufrufe=$($script:TestKiAufrufe), Meldungen=$($m.Count)") }
 
     # 4. KI nicht eingeschaltet: es wird keine Anfrage gestellt (Datenschutz)
     $script:TestKiAn = $true; $script:TestKiAufrufe = 0
-    $script:TestKiAntwort = '{"raeume":[{"lage":"rechts unten"}]}' | ConvertFrom-Json
+    $script:TestKiAntwort = '{"raeume":[{"lage":"rechts unten"}],"bereiche":[],"schnitte":[]}' | ConvertFrom-Json
     $res = @(Invoke-Pruefungen $okPlan.FullName 'entwurf' $false)
     if ($script:TestKiAufrufe -eq 0 -and @($res | Where-Object { $_.Quelle -eq 'ki' }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      KI aus: es wird nichts an die KI gesendet") }
     else { $falsch++; $zeilen.Add("[FALSCH]       KI aus, aber Aufrufe=$($script:TestKiAufrufe)") }
@@ -167,14 +254,28 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count 
     $script:TestKiAufrufe = 0
     $res = @(Invoke-Pruefungen $okPlan.FullName 'entwurf' $true)
     $ki = @($res | Where-Object { $_.Quelle -eq 'ki' })
-    if ($script:TestKiAufrufe -eq 1 -and $ki.Count -eq 1 -and $ki[0].Punkt -eq 'A3K') { $richtig++; $zeilen.Add("[richtig]      KI ein: eine Anfrage, KI-Hinweis als Befund A3K") }
+    if ($script:TestKiAufrufe -eq $anzahlKi -and $ki.Count -eq 1 -and $ki[0].Punkt -eq 'A3K') { $richtig++; $zeilen.Add("[richtig]      KI ein: je KI-Prüfpunkt eine Anfrage ($anzahlKi), KI-Hinweis als Befund A3K") }
     else { $falsch++; $zeilen.Add("[FALSCH]       KI ein: Aufrufe=$($script:TestKiAufrufe), KI-Befunde=$($ki.Count)") }
+
+    # 5b. Falsche Struktur der KI-Antwort (wie beim ersten Live-Test): darf nicht als "keine Funde" durchgehen, sondern gibt eine Meldung
+    $script:TestKiFehler = $null
+    $script:TestKiAntwort = '[{"Raumname":"Flur","Flächenangabe":"22,50 m²"}]' | ConvertFrom-Json
+    $res = @(Invoke-Pruefungen $okPlan.FullName 'entwurf' $true)
+    $m = @(Get-Meldungen)
+    if ($m.Count -eq $anzahlKi -and $m[0] -match 'Struktur') { $richtig++; $zeilen.Add("[richtig]      falsche KI-Struktur: Meldung statt stillem 'keine Funde'") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       falsche KI-Struktur: Meldungen=$($m.Count) ($($m -join ' | '))") }
+    $script:TestKiAntwort = '{"raeume":[{"lage":"rechts unten"}],"bereiche":[],"schnitte":[]}' | ConvertFrom-Json
+
+    # 5c. Antworttext aus der Interactions-Antwort (steps) wird gelesen
+    $stepsAntwort = '{"steps":[{"type":"thought","signature":"x"},{"type":"model_output","content":[{"type":"text","text":"{\"raeume\":[]}"}]}]}' | ConvertFrom-Json
+    if ((Get-KiAntwortText $stepsAntwort) -eq '{"raeume":[]}') { $richtig++; $zeilen.Add("[richtig]      Interactions-Antwort (steps) wird gelesen") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Interactions-Antwort (steps) nicht gelesen") }
 
     # 6. Fehler der KI (zum Beispiel Limit): Meldung statt Absturz, normale Prüfungen laufen weiter
     $script:TestKiFehler = 'Das kostenlose KI-Limit ist erreicht.'
     $res = @(Invoke-Pruefungen $okPlan.FullName 'entwurf' $true)
     $m = @(Get-Meldungen)
-    if ($m.Count -eq 1 -and $m[0] -match 'Limit' -and @($res | Where-Object { $_.Punkt -eq 'A4' -and $_.Ok }).Count -gt 0) { $richtig++; $zeilen.Add("[richtig]      KI-Fehler: Meldung, die anderen Prüfungen laufen weiter") }
+    if ($m.Count -eq $anzahlKi -and $m[0] -match 'Limit' -and @($res | Where-Object { $_.Punkt -eq 'A4' -and $_.Ok }).Count -gt 0) { $richtig++; $zeilen.Add("[richtig]      KI-Fehler: Meldung, die anderen Prüfungen laufen weiter") }
     else { $falsch++; $zeilen.Add("[FALSCH]       KI-Fehler: Meldungen=$($m.Count)") }
 }
 
