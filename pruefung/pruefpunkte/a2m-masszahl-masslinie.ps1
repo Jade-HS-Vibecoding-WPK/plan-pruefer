@@ -68,38 +68,68 @@ function Get-A2mStueckeNeu($items, $linien) {
         if ([math]::Abs($l.Y1 - $l.Y2) -lt 0.05) { $k = [int][math]::Floor($l.Y1); if (-not $h.ContainsKey($k)) { $h[$k] = New-Object System.Collections.Generic.List[object] }; $h[$k].Add([pscustomobject]@{ Q = $l.Y1; A = [math]::Min($l.X1, $l.X2); B = [math]::Max($l.X1, $l.X2); L = $l.Laenge }) }
         elseif ([math]::Abs($l.X1 - $l.X2) -lt 0.05) { $k = [int][math]::Floor($l.X1); if (-not $v.ContainsKey($k)) { $v[$k] = New-Object System.Collections.Generic.List[object] }; $v[$k].Add([pscustomobject]@{ Q = $l.X1; A = [math]::Min($l.Y1, $l.Y2); B = [math]::Max($l.Y1, $l.Y2); L = $l.Laenge }) }
     }
-    # Begrenzung der Maßlinien-Stücke: ein kurzer Querstrich (Maßhilfslinie, 4 bis 16 Punkt) kreuzt die Maßlinie am Ende des Stücks
-    $quer = @{ h = New-Object System.Collections.Generic.List[object]; v = New-Object System.Collections.Generic.List[object] }
-    $querFach = @{}
+    # Begrenzung der Maßlinien-Stücke: ein kurzer Strich (4 bis 16 Punkt) mittig auf dem Ende des Stücks. Entweder ein gerader
+    # Querstrich (Maßhilfslinie, so im Musterplan) oder ein schräger Strich (Schrägstrich nach DIN, so in anderen Plänen).
+    $querFach = @{}; $schraegFach = @{}
     foreach ($l in $linien) {
         if ($l.Laenge -lt 4 -or $l.Laenge -gt 16) { continue }
-        if ([math]::Abs($l.X1 - $l.X2) -lt 0.05) { $art = 'v'; $q = $l.X1; $a1 = [math]::Min($l.Y1, $l.Y2); $b1 = [math]::Max($l.Y1, $l.Y2) }
-        elseif ([math]::Abs($l.Y1 - $l.Y2) -lt 0.05) { $art = 'h'; $q = $l.Y1; $a1 = [math]::Min($l.X1, $l.X2); $b1 = [math]::Max($l.X1, $l.X2) }
+        $dx = [math]::Abs($l.X1 - $l.X2); $dy = [math]::Abs($l.Y1 - $l.Y2)
+        if ($dx -lt 0.05) { $art = 'v'; $q = $l.X1; $a1 = [math]::Min($l.Y1, $l.Y2); $b1 = [math]::Max($l.Y1, $l.Y2) }
+        elseif ($dy -lt 0.05) { $art = 'h'; $q = $l.Y1; $a1 = [math]::Min($l.X1, $l.X2); $b1 = [math]::Max($l.X1, $l.X2) }
+        elseif ($dx / $dy -ge 0.5 -and $dx / $dy -le 2) {
+            $mx = ($l.X1 + $l.X2) / 2; $my = ($l.Y1 + $l.Y2) / 2
+            $k = "$([int][math]::Floor($mx / 4))|$([int][math]::Floor($my / 4))"
+            if (-not $schraegFach.ContainsKey($k)) { $schraegFach[$k] = New-Object System.Collections.Generic.List[object] }
+            $schraegFach[$k].Add([pscustomobject]@{ X = $mx; Y = $my })
+            continue
+        }
         else { continue }
         $k = "$art$([int][math]::Floor($q / 4))"
         if (-not $querFach.ContainsKey($k)) { $querFach[$k] = New-Object System.Collections.Generic.List[object] }
         $querFach[$k].Add([pscustomobject]@{ Q = $q; A = $a1; B = $b1 })
     }
-    # Ende einer waagrechten Maßlinie bei (x, y): senkrechter Querstrich bei x, der y überdeckt. Ende einer senkrechten: waagrechter Querstrich bei y, der x überdeckt.
-    # Liefert die Lage des nächsten Querstrichs (oder $null). ArchiCAD teilt die Linienstücke nicht genau am Querstrich, sondern
-    # etwas versetzt (im Musterplan 1,42 Punkt = 2,5 cm bei 1:50). Gemessen wird deshalb von Querstrich zu Querstrich.
+    # Ende einer waagrechten Maßlinie bei (x, y): senkrechter Querstrich bei x, der mittig auf y sitzt. Ende einer senkrechten:
+    # waagrechter Querstrich bei y, mittig auf x. Oder ein schräger Strich mit Mitte auf dem Ende.
+    # Liefert die Lage des Strichs (oder $null). ArchiCAD teilt die Linienstücke nicht genau am geraden Querstrich, sondern
+    # etwas versetzt (im Musterplan 1,42 Punkt = 2,5 cm bei 1:50). Gemessen wird deshalb von Strich zu Strich.
+    # Nicht mittig sitzende Striche (Wandlinien, Hilfslinien von Bauteilen) zählen nicht: lieber kein Befund als ein falscher.
     $tickBei = {
         param($art, $x, $y)
         $pos = if ($art -eq 'h') { $x } else { $y }; $quer2 = if ($art -eq 'h') { $y } else { $x }
         $gesucht = if ($art -eq 'h') { 'v' } else { 'h' }
-        $best = $null; $bestD = 99
+        # Rang: mittig und mindestens 6 Punkt lang (gestrichelte Hilfslinien haben kürzere Striche) vor nur mittig
+        $mittig = $null; $mittigD = 99; $lang = $null; $langD = 99
         foreach ($dk in -1, 0, 1) {
             $k = "$gesucht$([int][math]::Floor($pos / 4) + $dk)"
-            if ($querFach.ContainsKey($k)) { foreach ($s in $querFach[$k]) { $dd = [math]::Abs($s.Q - $pos); if ($dd -le 3 -and $dd -lt $bestD -and $quer2 -ge ($s.A - 1) -and $quer2 -le ($s.B + 1)) { $best = $s.Q; $bestD = $dd } } }
+            if ($querFach.ContainsKey($k)) {
+                foreach ($s in $querFach[$k]) {
+                    $dd = [math]::Abs($s.Q - $pos)
+                    if ($dd -gt 3 -or [math]::Abs(($s.A + $s.B) / 2 - $quer2) -gt 0.6) { continue }
+                    if ($dd -lt $mittigD) { $mittig = $s.Q; $mittigD = $dd }
+                    if (($s.B - $s.A) -ge 6 -and $dd -lt $langD) { $lang = $s.Q; $langD = $dd }
+                }
+            }
         }
-        $best
+        if ($null -ne $lang) { return $lang }
+        if ($null -ne $mittig) { return $mittig }
+        foreach ($di in -1, 0, 1) {
+            foreach ($dj in -1, 0, 1) {
+                $k = "$([int][math]::Floor($x / 4) + $di)|$([int][math]::Floor($y / 4) + $dj)"
+                if ($schraegFach.ContainsKey($k)) {
+                    foreach ($s in $schraegFach[$k]) {
+                        if ([math]::Abs($s.X - $x) -le 1 -and [math]::Abs($s.Y - $y) -le 1) { return $(if ($art -eq 'h') { $s.X } else { $s.Y }) }
+                    }
+                }
+            }
+        }
+        $null
     }
     # Stück von Querstrich zu Querstrich (oder $null, wenn ein Ende keinen Querstrich hat)
     $zuStueck = {
         param($art, $s)
         if ($art -eq 'h') { $ta = & $tickBei 'h' $s.A $s.Q; $tb = & $tickBei 'h' $s.B $s.Q } else { $ta = & $tickBei 'v' $s.Q $s.A; $tb = & $tickBei 'v' $s.Q $s.B }
         if ($null -eq $ta -or $null -eq $tb -or $tb -le $ta) { return $null }
-        [pscustomobject]@{ Q = $s.Q; A = $ta; B = $tb; L = $tb - $ta }
+        [pscustomobject]@{ Q = $s.Q; A = $ta; B = $tb; L = $tb - $ta; LStueck = $s.L }
     }
     foreach ($z in $zahlen) {
         $n = $z.Item

@@ -96,6 +96,24 @@ Stand: Ende Montag, 16.11.2026 (Tag 1 von 5). Der Zeitplan steht in [PLAN.md](PL
 5. Weitere Werkpläne mit anderem Aufbau als Test, damit die Prüfungen nicht nur zu einem Plan passen; A5-Schwellen daran prüfen.
 6. Tempo (ein Werkplan etwa 40 Sekunden).
 7. Donnerstag 12 Uhr Freeze, danach Poster und Demo.
+
+## Mittwoch, 18.11.: zweiter Werkplan und genauere Maßlinien
+
+**Eure Antwort zu den 5 cm:** Die Linien sind richtig (1,78), der Prüfer hat falsch gemessen. Ursache: ArchiCAD teilt die Maßlinie nicht genau am Querstrich, sondern 2,5 cm daneben. In der Kettenmitte hebt sich das auf, am Kettenende werden es 5 cm. Jetzt misst A2M **von Strich zu Strich**. Im Musterplan stimmen alle 97 Maßzahlen genau, die Sonderregel "Kettenende bis 6 cm kürzer" ist weg. Eine falsche Zahl am Kettenende (1,78 → 1,73) und schon 2 cm Abweichung werden gemeldet. Im Plan `05_A2_fehler` findet A2M jetzt auch den eingebauten Fehler 2,45.
+
+**Neuer Testplan von euch** (`testplaene/werk/02_...`, ein Gebäude mit Zimmern und Bädern, Maßstriche schräg nach DIN). Zuerst gab es dort über 40 falsche Meldungen. Behoben:
+- **A2M:** Schräge Maßstriche werden erkannt (197 von 198 Zahlen passen). Die Öffnungshöhen unter der Maßlinie (2,93) gelten nicht mehr als Maßzahl. Es zählen nur Striche, die mittig auf der Linie sitzen.
+- **A3/A4 Raumstempel:** "NGF:" darf weiter links von der Zahl stehen (bis 80 statt 40 Punkt).
+- **A4W:** Eine Zahl über dem Raumnamen (Türmaß "37") gilt nicht mehr als Raumnummer. Der Plan hat keine Raumnummern, das ist in Ordnung.
+- **A2:** Die Terrassenfläche "39,59 m²" außerhalb des Gebäudes gilt nicht mehr als Gesamtmaß. Zahlen mit "m" oder "m²" daneben sind keine Maßzahlen.
+- **A8:** Der Eingangspfeil ist dort ein ausgefülltes Dreieck ohne Umriss. Solche Dreiecke werden jetzt erkannt.
+- **Echter Fehler im Plan** (von euch bestätigt): Zwei Terrassen oben haben keine Fläche. Deshalb heißt der Plan jetzt `02_A4_fehler.pdf`.
+- Es bleiben gelbe A5-Hinweise (Fläche/Umfang gegen Wandmaße 5 bis 14 %). Die sind kein Fehler. Ob die Schwellen passen, wäre an diesem Plan noch zu klären.
+
+**Testlauf (18.11. mittags):** **125 richtig, 0 falsch, 2 übersprungen** (etwa 15 Minuten mit dem neuen Plan). Neu dabei: `02_A4_fehler` (nur A4 meldet, alle anderen bleiben ruhig) und vier A2M-Selbsttests (2 cm Abweichung, 1 cm Rundung, Kettenende richtig gemessen, Kettenende 1,78 → 1,73).
+
+**Noch nicht gespeichert:** Die Änderungen sind nicht committet. Wenn ihr zufrieden seid, in GitHub Desktop committen und "Push origin" klicken. Damit der Server auf 8080 die neuen Prüfungen nutzt, ihn neu starten (`Planpruefer-starten.cmd`).
+
 ## Ältere Aufgabenliste (vom Montag, größtenteils erledigt)
 
 1. **Server neu starten**, damit alles Neue gilt: das schwarze Server-Fenster schließen und `Planpruefer-starten.cmd` doppelklicken. (Der Server läuft zurzeit noch mit altem Stand.)

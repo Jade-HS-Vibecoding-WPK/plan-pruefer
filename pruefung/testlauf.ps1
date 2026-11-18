@@ -20,6 +20,8 @@ $bekannteZusatzfehler = @{
     # In diesem Plan fehlt auch die Höhenangabe ±0,00 (Versehen, siehe testplaene\LIESMICH.md).
     # A7 (Höhenangaben) ist gebaut: dieser Plan ist zugleich der Fehlerfall für A7 (siehe Selbsttest A7).
     '01_A4_fehler' = @('A7')
+    # Die falsche Zahl 2,45 (statt 2,43) passt auch nicht zu ihrer Maßlinie: A2M meldet denselben Fehler (seit 18.11.).
+    '05_A2_fehler' = @('A2M')
 }
 $richtig = 0; $falsch = 0; $uebersprungen = 0
 $zeilen = New-Object System.Collections.Generic.List[string]
@@ -588,8 +590,10 @@ if ($werkOk -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A2M' }).Count 
     Befund-L '4,87' 48 '4,57' 1 'Achse zu Bauteil oben 4,87 -> 4,57: ein Befund'
     Befund-L '2,43' 315 '2,13' 1 'Öffnungsmaß links (senkrechte Kette) 2,43 -> 2,13: ein Befund' 0 200
     Befund-L '6,49' 415 '6,89' 1 'Innenkette im Gebäude 6,49 -> 6,89: ein Befund' 300 340
-    Befund-L '2,43' 133 '2,45' 0 'Abweichung von 2 cm bleibt unter der Toleranz: kein Befund (die Summenprüfung A2 meldet sie)'
-    Befund-L '1,78' 133 '1,78' 0 'Stück am Kettenende 5 cm kürzer als die Zahl (Zeichenweise im Musterplan): kein Befund' 1000 1200
+    Befund-L '2,43' 133 '2,45' 1 'Abweichung von 2 cm: ein Befund (Messung von Querstrich zu Querstrich, Team 18.11.)'
+    Befund-L '2,43' 133 '2,44' 0 'Abweichung von 1 cm (Rundung) bleibt in der Toleranz: kein Befund'
+    Befund-L '1,78' 133 '1,78' 0 'Stück am Kettenende 1,78 wird richtig gemessen (Querstrich zu Querstrich): kein Befund' 1000 1200
+    Befund-L '1,78' 133 '1,73' 1 'Kettenende 1,78 -> 1,73: ein Befund (früher als Zeichenweise geduldet)' 1000 1200
 
     # Zahl ohne Maßlinie (zum Beispiel in einem Stempel) wird nicht beachtet
     $stempelZahl = @($itemsL) + [pscustomobject]@{ X = 500; Y = 300; T = '99,99' }

@@ -73,8 +73,9 @@ function Get-A4WRaumstempel($items) {
         $darueber = @($items | Where-Object {
                 [math]::Abs($_.X - $ankerX) -le 3 -and $_.Y -lt ($oben - 5) -and $_.Y -gt ($oben - 40) -and $_.T -cnotmatch '^(NGF|RU|RH|FB|WB|DB)\s*:$'
             })
-        $nummer = $darueber | Where-Object { $_.T -match '^\d{2}$' } | Sort-Object { [math]::Abs($_.Y - ($oben - 14.8)) } | Select-Object -First 1
         $name = $darueber | Where-Object { $_.T -match '[A-Za-zÄÖÜäöüß]{2,}' } | Sort-Object { [math]::Abs($_.Y - ($oben - 29)) } | Select-Object -First 1
+        # Die Raumnummer steht zwischen Name und "NGF:". Zahlen über dem Namen sind Maßzahlen (zum Beispiel Türmaße), keine Nummer.
+        $nummer = $darueber | Where-Object { $_.T -match '^\d{2}$' -and (-not $name -or $_.Y -gt ($name.Y + 3)) } | Sort-Object { [math]::Abs($_.Y - ($oben - 14.8)) } | Select-Object -First 1
 
         $felder = @{}
         foreach ($f in $script:A4wFelder) {
