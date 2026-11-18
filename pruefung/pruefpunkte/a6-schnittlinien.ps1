@@ -64,7 +64,12 @@ function Get-A6Pruefung($items, $dreiecke) {
     }
 
     # Buchstaben: einzelne Großbuchstaben (ein einzelnes N ist der Nordpfeil)
-    $buchstaben = @($items | Where-Object { $_.T -cmatch '^[A-Z]$' })
+    # Ein Buchstabe, an den in derselben Zeile direkt ein weiteres Textstück anschließt, gehört zu einem Wort
+    # (zum Beispiel "V" "K" "Fundament" = VK Fundament) und ist kein Schnittbuchstabe
+    $buchstaben = @($items | Where-Object {
+            $b = $_
+            $b.T -cmatch '^[A-Z]$' -and -not @($items | Where-Object { $_ -ne $b -and [math]::Abs($_.Y - $b.Y) -le 1.5 -and ($_.X - $b.X) -gt 0 -and ($_.X - $b.X) -le 9 }).Count
+        })
     $nCount = @($buchstaben | Where-Object { $_.T -ceq 'N' }).Count
     $buchstaben = @($buchstaben | Where-Object { -not ($_.T -ceq 'N' -and $nCount -eq 1) })
     $buchstabeVerwendet = New-Object System.Collections.Generic.HashSet[object]

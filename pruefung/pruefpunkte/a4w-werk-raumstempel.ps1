@@ -63,6 +63,8 @@ function Get-A4WRaumstempel($items) {
     $reihenfolge = @($script:A4wFelder | ForEach-Object { $_.Label })
     foreach ($gruppe in (Get-A4WStempelSpalten $items)) {
         $gruppe = @($gruppe)
+        # Ohne NGF, RU und RH ist es kein Raumstempel, sondern zum Beispiel eine Raumliste mit Belägen (Nummer, Raum, FB, WB, DB)
+        if (-not @($gruppe | Where-Object { $_.T -cmatch '^(NGF|RU|RH)\s*:$' }).Count) { continue }
         $ankerX = ($gruppe | Measure-Object X -Average).Average
         # Oberkante des Stempels (Zeile "NGF:"), auch wenn diese Beschriftung selbst fehlt
         $oben = ($gruppe | ForEach-Object {

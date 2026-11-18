@@ -97,8 +97,19 @@
   .plankopf h2 { margin: 0; font-size: 17px; word-break: break-all; }
   .zaehler { color: var(--akzent); font-size: 14px; white-space: nowrap; }
   .plan { position: relative; background: var(--weiss); border-radius: 14px; overflow: hidden; min-height: 240px; }
+  .planbild { position: relative; width: 100%; }
   .plan canvas { display: block; width: 100%; height: auto; }
   .plan svg.marken { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* Vollbild: der Plan füllt den Bildschirm, Seitenverhältnis bleibt (--ar = Breite durch Höhe) */
+  .vollbild-knopf { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; background: var(--kachel-hell); color: var(--weiss); border: 1px solid var(--linie); border-radius: 999px; padding: 5px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+  .vollbild-knopf:hover { border-color: var(--akzent); }
+  .vollbild-knopf svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .plan:fullscreen, .plan.vollbild-ersatz { border-radius: 0; display: grid; place-items: center; overflow: auto; }
+  .plan.vollbild-ersatz { position: fixed; inset: 0; z-index: 50; }
+  .plan:fullscreen .planbild, .plan.vollbild-ersatz .planbild { width: min(100vw, calc(100vh * var(--ar, 1.41))); }
+  .plan.vollbild-ersatz .schliessen { display: block; position: fixed; }
+  .plan .schliessen { display: none; position: absolute; top: 14px; right: 14px; z-index: 2; background: var(--grund); color: var(--weiss); border: 0; border-radius: 999px; padding: 8px 16px; font: inherit; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+  .plan:fullscreen .schliessen { display: block; position: fixed; }
   .plan .ohne-bild { color: var(--grund); padding: 40px 20px; text-align: center; }
   .marke-punkt { cursor: pointer; }
   .marke-punkt circle.ring { fill: rgba(15, 30, 58, .12); stroke: var(--grund); }
@@ -173,10 +184,10 @@
     </section>
 
     <div class="frage">Wonach soll geprüft werden?</div>
-    <label class="kachel wahl"><input type="radio" name="phase" value="werk" autocomplete="off"><span class="haken"></span>
-      <span class="name">Werkplanung</span><span class="massstab">1:50</span><span class="klein">Checkliste Werkplanung</span></label>
     <label class="kachel wahl"><input type="radio" name="phase" value="entwurf" autocomplete="off"><span class="haken"></span>
       <span class="name">Entwurf</span><span class="massstab">1:100</span><span class="klein">Checkliste Entwurfsplanung</span></label>
+    <label class="kachel wahl"><input type="radio" name="phase" value="werk" autocomplete="off"><span class="haken"></span>
+      <span class="name">Werkplanung</span><span class="massstab">1:50</span><span class="klein">Checkliste Werkplanung</span></label>
 
     <label class="kachel ki breit" id="kiBox">
       <input type="checkbox" id="kiAn" autocomplete="off"><span class="schalter" aria-hidden="true"></span>
@@ -217,7 +228,7 @@
   <div class="planbereich">
     <button class="blaettern" id="zurueckPlan" type="button" aria-label="Vorheriger Plan"><svg viewBox="0 0 16 16"><path d="M12 1 L3 8 L12 15 Z"/></svg></button>
     <section class="kachel plankachel">
-      <div class="plankopf"><h2 id="planName"></h2><span class="zaehler" id="zaehler"></span></div>
+      <div class="plankopf"><h2 id="planName"></h2><button class="vollbild-knopf" id="vollbild" type="button" title="Plan im Vollbild öffnen (zurück mit Esc)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9 V4 H9 M15 4 H20 V9 M20 15 V20 H15 M9 20 H4 V15"/></svg>Vollbild</button><span class="zaehler" id="zaehler"></span></div>
       <div class="plan" id="plan"></div>
       <div class="punkte" id="punkte"></div>
       <div class="geprueft-auf" id="gepruefAuf"></div>
@@ -447,14 +458,17 @@
     catch (err) { if (nr === zeichenNr) { plan.textContent = ''; plan.append(el('div', 'ohne-bild', 'Der Plan kann nicht angezeigt werden (' + err.message + '). Die Liste unten gilt trotzdem.')); } return; }
     if (nr !== zeichenNr) return;
     const roh = seite.getViewport({ scale: 1 });
-    const breite = Math.min(plan.clientWidth || 900, 1400);
-    const scale = (breite / roh.width) * Math.min(window.devicePixelRatio || 1, 2);
-    const vp = seite.getViewport({ scale });
-    const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
-    await seite.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    const c = await maleSeite(seite, plan.clientWidth || 900);
     if (nr !== zeichenNr) return;
     plan.textContent = '';
-    plan.append(c);
+    const bild = el('div', 'planbild'); bild.style.setProperty('--ar', roh.width / roh.height);
+    plan.style.setProperty('--ar', roh.width / roh.height);
+    const zu = el('button', 'schliessen', 'Vollbild schließen (Esc)'); zu.type = 'button';
+    zu.addEventListener('click', schliesseVollbild);
+    plan.classList.toggle('vollbild-ersatz', ersatzVollbild);
+    plan.append(zu, bild);
+    bild.append(c);
+    aktuelleSeite = seite;
     // Markierungen: die Positionen vom Server sind in Punkt, von links oben gemessen (wie die Seite in pdf.js)
     const ns = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(ns, 'svg'); svg.setAttribute('class', 'marken');
@@ -470,8 +484,51 @@
       g.addEventListener('click', () => waehle(b._nr, false));
       svg.append(g);
     });
-    plan.append(svg);
+    bild.append(svg);
     markiere();
+  }
+
+  // Scharf zeichnen: so viele Bildpunkte wie auf dem Bildschirm (mal Pixeldichte, bis 3fach), mindestens 2fach,
+  // höchstens 9000 Bildpunkte an der langen Seite (Grenze der Browser)
+  let aktuelleSeite = null;
+  async function maleSeite(seite, cssBreite) {
+    const roh = seite.getViewport({ scale: 1 });
+    const dichte = Math.max(2, Math.min(window.devicePixelRatio || 1, 3));
+    let scale = (cssBreite / roh.width) * dichte;
+    scale = Math.min(scale, 9000 / Math.max(roh.width, roh.height));
+    const vp = seite.getViewport({ scale });
+    const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+    await seite.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    return c;
+  }
+
+  // Vollbild: den Plan mit Markierungen über den ganzen Bildschirm zeigen und in Bildschirmgröße neu zeichnen
+  // Erlaubt der Browser kein echtes Vollbild (zum Beispiel in einer eingebetteten Vorschau), füllt der Plan das Browserfenster.
+  let ersatzVollbild = false;
+  function setzeErsatz(an) { ersatzVollbild = an; $('plan').classList.toggle('vollbild-ersatz', an); document.body.style.overflow = an ? 'hidden' : ''; neuMalen(); }
+  function schliesseVollbild() {
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+    if (ersatzVollbild) setzeErsatz(false);
+  }
+  $('vollbild').addEventListener('click', async () => {
+    const plan = $('plan');
+    // Manche Browser antworten auf die Anfrage gar nicht: nach 800 ms ohne Vollbild den Ersatz nehmen
+    try {
+      if (!plan.requestFullscreen) throw new Error('kein Vollbild');
+      await Promise.race([plan.requestFullscreen(), new Promise(r => setTimeout(r, 800))]);
+      if (!document.fullscreenElement) throw new Error('kein Vollbild');
+    }
+    catch (err) { setzeErsatz(true); }
+  });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && ersatzVollbild) setzeErsatz(false); });
+  document.addEventListener('fullscreenchange', neuMalen);
+  async function neuMalen() {
+    await new Promise(r => requestAnimationFrame(r));
+    const bild = document.querySelector('#plan .planbild'); if (!bild || !aktuelleSeite) return;
+    const seite = aktuelleSeite;
+    const c = await maleSeite(seite, bild.clientWidth || window.innerWidth);
+    const alt = bild.querySelector('canvas');
+    if (alt && seite === aktuelleSeite) alt.replaceWith(c);
   }
 
   let gewaehlteNr = null;

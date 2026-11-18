@@ -23,9 +23,29 @@ $script:A2Zeichenbreite = 4.25
 $script:A2Toleranz = 0.011        # Achsabstände aus den Linien (ArchiCAD rundet auf 1 cm)
 $script:A2ToleranzSumme = 0.006   # Summen von Maßzahlen (5 mm genau, ein Fehler von 1 cm soll auffallen)
 
+# Nur die Achsen, die zum Raster gehören (eine Richtung). Weg fallen:
+#  - Strichlinien, die viel kürzer sind als die übrigen (unter 60 % der mittleren Länge, zum Beispiel verdeckte Kanten)
+#  - Strichlinien am Rand, die weit abseits liegen (Abstand zur Nachbarachse über 4 mal dem mittleren Achsabstand),
+#    zum Beispiel gestrichelte Linien bei den Maßketten (so im Museumsplan vom 18.11.)
+function Get-A2EchteAchsen($achsen) {
+    $a = @($achsen | Sort-Object Lage)
+    if ($a.Count -lt 3) { return $a }
+    $laengen = @($a | ForEach-Object { $_.Bis - $_.Von } | Sort-Object)
+    $mittelL = $laengen[[int][math]::Floor($laengen.Count / 2)]
+    $a = @($a | Where-Object { ($_.Bis - $_.Von) -ge 0.6 * $mittelL })
+    while ($a.Count -ge 3) {
+        $abst = @(for ($i = 1; $i -lt $a.Count; $i++) { $a[$i].Lage - $a[$i - 1].Lage }) | Sort-Object
+        $mittelA = $abst[[int][math]::Floor($abst.Count / 2)]
+        if (($a[1].Lage - $a[0].Lage) -gt 4 * $mittelA) { $a = @($a | Select-Object -Skip 1); continue }
+        if (($a[$a.Count - 1].Lage - $a[$a.Count - 2].Lage) -gt 4 * $mittelA) { $a = @($a | Select-Object -First ($a.Count - 1)); continue }
+        break
+    }
+    $a
+}
+
 function Get-A2Kern($items, $linien) {
     $ach = @(Get-AchsenLinien @($linien))
-    $senk = @($ach | Where-Object { $_.Richtung -eq 'senkrecht' }); $waag = @($ach | Where-Object { $_.Richtung -eq 'waagrecht' })
+    $senk = @(Get-A2EchteAchsen @($ach | Where-Object { $_.Richtung -eq 'senkrecht' })); $waag = @(Get-A2EchteAchsen @($ach | Where-Object { $_.Richtung -eq 'waagrecht' }))
     if ($senk.Count -ge 2 -and $waag.Count -ge 2) {
         return [pscustomobject]@{
             Links = ($senk | Measure-Object Lage -Minimum).Minimum; Rechts = ($senk | Measure-Object Lage -Maximum).Maximum
@@ -167,7 +187,16 @@ function Get-A2Massketten($items, $linien) {
                 $ergebnisse.Add((New-Result "Maßkette $seite" $false (Format-Meter $gesamt.Wert) "Auf der Seite '$seite' gibt es zum Gesamtmaß $(Format-Meter $gesamt.Wert) keine Maßkette mit Teilmaßen (Öffnungsmaße)." $gesamt.Item.X $gesamt.Item.Y)); $befunde++
             } else {
                 $nah = $kandidaten | Sort-Object { [math]::Abs($_.Summe - $gesamt.Wert) } | Select-Object -First 1
-                $ergebnisse.Add((New-Result "Maßkette $seite" $false (Format-Meter $gesamt.Wert) "Das Gesamtmaß $(Format-Meter $gesamt.Wert) auf der Seite '$seite' stimmt mit keiner Maßkette überein: die nächstliegende Kette ergibt $(Format-Meter $nah.Summe) (Unterschied $(Format-Meter ([math]::Abs($nah.Summe - $gesamt.Wert)))). Eine Teilzahl ist falsch oder fehlt." $gesamt.Item.X $gesamt.Item.Y)); $befunde++
+                $diff = [math]::Abs($nah.Summe - $gesamt.Wert)
+                # Plan mit hochgestellten Millimetern (Hochzahl nicht 5, zum Beispiel 25,68 mit kleiner 8): jede Zahl ist gerundet,
+                # unter 1 cm Unterschied ist deshalb nur ein Hinweis (Unsicheres als Hinweis, Regel vom Team)
+                $mm = @($nah.Zahlen + @($gesamt) | Where-Object { $_.Hochzahl -and ([math]::Round($_.Wert * 1000) % 5) -ne 0 }).Count -gt 0
+                $r = New-Result "Maßkette $seite" $false (Format-Meter $gesamt.Wert) "Das Gesamtmaß $(Format-Meter $gesamt.Wert) auf der Seite '$seite' stimmt mit keiner Maßkette überein: die nächstliegende Kette ergibt $(Format-Meter $nah.Summe) (Unterschied $(Format-Meter $diff)). Eine Teilzahl ist falsch oder fehlt." $gesamt.Item.X $gesamt.Item.Y
+                if ($mm -and $diff -lt 0.01) {
+                    $r.Detail = "Hinweis: Das Gesamtmaß $($gesamt.Wert.ToString('0.000', (New-Object System.Globalization.CultureInfo('de-DE')))) m auf der Seite '$seite' weicht um $([math]::Round($diff * 1000)) mm von der Summe der Maßkette ab. Bei Millimeter-Angaben kann das an der Rundung liegen, bitte nachrechnen."
+                    $r.Quelle = 'hinweis'
+                }
+                $ergebnisse.Add($r); $befunde++
             }
         }
 
@@ -188,7 +217,14 @@ function Get-A2Massketten($items, $linien) {
             $abstandText = ($abstaende | ForEach-Object { Format-Meter $_ }) -join '; '
             if ($beste.Treffer -eq $abstaende.Count) { $notizen += "Achse zu Achse stimmt ($abstandText)" }
             elseif ($beste.Treffer -ge 1) {
-                $ergebnisse.Add((New-Result "Maßkette $seite" $false $abstandText "Achse zu Achse auf der Seite '$seite': Die Achsabstände im Plan sind $abstandText m, die passendste Maßkette stimmt aber nur bei $($beste.Treffer) von $($abstaende.Count) Abständen." $x0 $y0)); $befunde++
+                $r = New-Result "Maßkette $seite" $false $abstandText "Achse zu Achse auf der Seite '$seite': Die Achsabstände im Plan sind $abstandText m, die passendste Maßkette stimmt aber nur bei $($beste.Treffer) von $($abstaende.Count) Abständen." $x0 $y0
+                # Sehr feines Raster (Modulraster, mehr als 15 Abstände): fehlende oder zusätzliche Strichlinien sind nicht sicher zu
+                # unterscheiden, deshalb nur ein Hinweis
+                if ($abstaende.Count -gt 15) {
+                    $r.Detail = "Hinweis: Achse zu Achse auf der Seite '$seite' (feines Raster mit $($abstaende.Count + 1) Linien): $($beste.Treffer) von $($abstaende.Count) Abständen passen zur Maßkette. Bitte prüfen, ob eine Rasterlinie fehlt oder eine Zahl falsch ist."
+                    $r.Quelle = 'hinweis'
+                }
+                $ergebnisse.Add($r); $befunde++
             } else {
                 $ergebnisse.Add((New-Result "Maßkette $seite" $false $abstandText "Auf der Seite '$seite' fehlt die Maßkette 'Achse zu Achse' (Achsabstände im Plan: $abstandText m)." $x0 $y0)); $befunde++
             }

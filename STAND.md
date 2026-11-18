@@ -112,6 +112,25 @@ Stand: Ende Montag, 16.11.2026 (Tag 1 von 5). Der Zeitplan steht in [PLAN.md](PL
 
 **Testlauf (18.11. mittags):** **125 richtig, 0 falsch, 2 übersprungen** (etwa 15 Minuten mit dem neuen Plan). Neu dabei: `02_A4_fehler` (nur A4 meldet, alle anderen bleiben ruhig) und vier A2M-Selbsttests (2 cm Abweichung, 1 cm Rundung, Kettenende richtig gemessen, Kettenende 1,78 → 1,73).
 
+### Mittwoch Nachmittag: zwei weitere Werkpläne
+
+**`06_A1_fehler.pdf`** (von euch als `test_Werkplanung.pdf` abgelegt, umbenannt fürs Testschema): Diesem Plan fehlen laut euch Nordpfeil, Höhenkote, BRH, Planbezeichnung und Achsraster. Er meldet genau das (A1 dazu A7, A9, A10, A11 als bekannte Zusatzfehler). Behoben:
+- **A4W:** Die **Raumliste** rechts (Nummer, Raum, FB, WB, DB) ist kein Raumstempel. Spalten ohne NGF, RU und RH werden übergangen. Die Raumnummern dieses Plans stehen über dem Namen und etwas versetzt, sie werden nicht geprüft (kein falscher Alarm).
+- **A4:** "Wohnung 1" bis "4" sind keine Räume.
+
+**`05_Werkplanung_ok.pdf`** (Museum, Modulraster 62,5 cm, Millimeter hochgestellt). Behoben:
+- **A11:** Die Bezeichnung darf auch nur "Erdgeschoss … M1:50" heißen (Geschossname statt "Grundriss", "M1:50" zusammengeschrieben).
+- **A6:** Ein Buchstabe, der zu einem Wort gehört ("V" "K" "Fundament"), ist kein Schnittbuchstabe.
+- **A2:** Gestrichelte Linien weit außerhalb des Rasters und deutlich kürzere Strichlinien zählen für die Bemaßung nicht als Achsen. Bei einem **feinen Raster (mehr als 15 Abstände)** ist "Achse zu Achse" nur ein gelber Hinweis. Weicht ein Gesamtmaß **mit hochgestellten Millimetern** um weniger als 1 cm ab, ist das auch nur ein Hinweis (Rundung möglich). Ab 1 cm und in Plänen mit halben Zentimetern bleibt es ein Fehler.
+- **A4:** "Eingang" ohne Fläche ist eine Beschriftung, kein Raum (eure Antwort).
+
+**Testlauf (18.11. nachmittags):** **128 richtig, 0 falsch, 2 übersprungen** (alle 5 Werkpläne, etwa 15 Minuten). Der A11-Selbsttest prüft jetzt beides: Fehlt nur "GRUNDRISS", reicht "ERDGESCHOSS M 1:50". Fehlen beide Wörter, kommt ein Befund.
+
+### Design-Wünsche vom Mittwoch (in `pruefung/web/index.html`)
+- **Kacheln getauscht:** Entwurf links, Werkplanung rechts.
+- **Vollbild:** Knopf "Vollbild" über dem Plan. Der Plan mit den Markierungen füllt den Bildschirm und wird in dieser Größe neu gezeichnet. Zurück mit Esc oder "Vollbild schließen". Erlaubt der Browser kein echtes Vollbild, füllt der Plan das Browserfenster (in der Vorschau getestet). Das echte Vollbild in Chrome oder Edge ist noch nicht getestet.
+- **Schärfer:** Der Plan wird mit mindestens doppelter Auflösung gezeichnet (vorher 1,25-fach), höchstens 9000 Bildpunkte an der langen Seite. Große Pläne (Museum) brauchen dadurch im Browser länger zum Zeichnen.
+
 **Noch nicht gespeichert:** Die Änderungen sind nicht committet. Wenn ihr zufrieden seid, in GitHub Desktop committen und "Push origin" klicken. Damit der Server auf 8080 die neuen Prüfungen nutzt, ihn neu starten (`Planpruefer-starten.cmd`).
 
 ## Ältere Aufgabenliste (vom Montag, größtenteils erledigt)

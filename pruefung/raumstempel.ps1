@@ -20,7 +20,9 @@
   Die Raumnamen-Liste kann ergänzt werden: weitere Namen in $script:Raumnamen eintragen (durch | getrennt).
 #>
 
-$script:Raumnamen = '^(Flur|Diele|Windfang|Eingang\w*|Büro|Küche|Kochen|Wohnen|Essen|Wohnen/Essen|Wohnen/Kochen|Wohn\w*|Ess\w*|Schlafen|Schlaf\w*|Kind\w*|Eltern\w*|Gäste\w*|Arbeits\w*|Zimmer\w*|Bad|Bad\w*|WC|Gäste-?WC|Dusche|HWR|Hauswirtschaft\w*|Technik\w*|Abstell\w*|Speisekammer|Vorrat\w*|Ankleide|Keller|Lager\w*|Werkstatt|Heizung\w*|Garage|Carport|Gartenhaus|Terrasse|Balkon|Loggia|Treppenhaus)$'
+# "Eingang" steht nicht in der Liste: In Plänen ist es oft nur eine Beschriftung am Eingang, kein Raum (Team 18.11.).
+# Ein Eingangsraum mit Stempel (Name und Fläche) wird trotzdem erkannt, nur ein Name ohne Fläche wird nicht gemeldet.
+$script:Raumnamen = '^(Flur|Diele|Windfang|Büro|Küche|Kochen|Wohnen|Essen|Wohnen/Essen|Wohnen/Kochen|Wohn(?!ung)\w*|Ess\w*|Schlafen|Schlaf\w*|Kind\w*|Eltern\w*|Gäste\w*|Arbeits\w*|Zimmer\w*|Bad|Bad\w*|WC|Gäste-?WC|Dusche|HWR|Hauswirtschaft\w*|Technik\w*|Abstell\w*|Speisekammer|Vorrat\w*|Ankleide|Keller|Lager\w*|Werkstatt|Heizung\w*|Garage|Carport|Gartenhaus|Terrasse|Balkon|Loggia|Treppenhaus)$'
 $script:FlaechenLabel = '^(NGF|NF|BGF|Fläche)\s*:?$'
 $script:FlaechenKomma = '^\d{1,4}[.,]\d{1,2}$'
 $script:FlaechenInline = '^(?:(?:NGF|NF|BGF|Fläche)\s*:?\s*)?(?<w>\d{1,4}(?:[.,]\d{1,2})?)\s*m\s*[²2]$'

@@ -22,6 +22,9 @@ $bekannteZusatzfehler = @{
     '01_A4_fehler' = @('A7')
     # Die falsche Zahl 2,45 (statt 2,43) passt auch nicht zu ihrer Maßlinie: A2M meldet denselben Fehler (seit 18.11.).
     '05_A2_fehler' = @('A2M')
+    # Dritter Werkplan (vom Team 18.11., vorher test_Werkplanung.pdf): ohne Nordpfeil, Höhenkote, BRH, Planbezeichnung
+    # und Achsraster (vom Team bestätigt). Hat eine Raumliste mit Belägen und "Wohnung 1" bis "4" (dürfen nicht melden).
+    '06_A1_fehler' = @('A7', 'A9', 'A10', 'A11')
 }
 $richtig = 0; $falsch = 0; $uebersprungen = 0
 $zeilen = New-Object System.Collections.Generic.List[string]
@@ -373,8 +376,13 @@ if ($werkOk -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A11' }).Count 
 
     $titelC = $itemsC | Where-Object { $_.T -ceq 'GRUNDRISS' -and $_.X -lt 200 } | Select-Object -First 1
     $skalaC = $itemsC | Where-Object { $_.T -eq '1:50' -and [math]::Abs($_.Y - $titelC.Y) -le 3 } | Select-Object -First 1
-    $b = @(Get-A11Planinhalt @($itemsC | Where-Object { $_ -ne $titelC }) | Where-Object { -not $_.Ok })
-    if ($b.Count -eq 1 -and $b[0].Angabe -eq 'Planbezeichnung') { $richtig++; $zeilen.Add("[richtig]      Wort GRUNDRISS fehlt: Befund Planbezeichnung") }
+    # Nur "GRUNDRISS" weg: "ERDGESCHOSS M 1:50" bleibt und gilt seit 18.11. als Bezeichnung (Geschossname, Museumsplan)
+    $nurGeschoss = @(Get-A11Planinhalt @($itemsC | Where-Object { $_ -ne $titelC }) | Where-Object { -not $_.Ok })
+    if ($nurGeschoss.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      nur GRUNDRISS fehlt, ERDGESCHOSS M 1:50 steht da: kein Befund") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       nur GRUNDRISS fehlt: $($nurGeschoss.Count) Befunde") }
+    $geschossC = @($itemsC | Where-Object { [math]::Abs($_.Y - $titelC.Y) -le 3 -and $_.T -match '^(?i)\w*geschoss\w*$' })
+    $b = @(Get-A11Planinhalt @($itemsC | Where-Object { $_ -ne $titelC -and $geschossC -notcontains $_ }) | Where-Object { -not $_.Ok })
+    if ($b.Count -eq 1 -and $b[0].Angabe -eq 'Planbezeichnung') { $richtig++; $zeilen.Add("[richtig]      GRUNDRISS und Geschossname fehlen: Befund Planbezeichnung") }
     else { $falsch++; $zeilen.Add("[FALSCH]       ohne GRUNDRISS: $($b.Count) Befunde") }
     $b = @(Get-A11Planinhalt @($itemsC | Where-Object { $_ -ne $skalaC }) | Where-Object { -not $_.Ok })
     if ($b.Count -eq 1 -and $b[0].Angabe -eq 'Planbezeichnung') { $richtig++; $zeilen.Add("[richtig]      Maßstab in der Bezeichnung fehlt: Befund") }
