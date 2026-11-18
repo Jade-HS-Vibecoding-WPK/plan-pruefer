@@ -86,6 +86,18 @@
   .datenschutz { grid-column: 1 / -1; color: var(--leise); font-size: 13px; text-align: center; margin: 0; }
   .meldung-fehler { grid-column: 1 / -1; background: #3a2340; border: 1px solid #b06a8a; border-radius: 14px; padding: 12px 16px; }
 
+  /* Taskleiste (über dem Banner, auf allen Seiten) */
+  .taskleiste { position: sticky; top: 0; z-index: 20; background: rgba(15, 30, 58, .92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--linie); }
+  .taskleiste .innen { max-width: 980px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .task-gruppe { display: inline-flex; align-items: center; gap: 4px; background: var(--kachel); border: 1px solid var(--linie); border-radius: 999px; padding: 4px; }
+  .task-gruppe.aktiv { border-color: var(--akzent); }
+  .task { border: 0; background: transparent; color: var(--akzent); border-radius: 999px; padding: 6px 14px; font-size: 14px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .task:hover { color: var(--weiss); background: var(--kachel-hell); }
+  .task.an { background: var(--weiss); color: var(--grund); }
+  .task.unter { font-weight: 500; font-size: 13px; padding: 5px 12px; }
+  .task .schritt { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 2px solid currentColor; font-size: 11px; font-weight: 800; }
+  .task-pfeil { color: var(--leise); font-size: 14px; }
+
   /* Seite 2 */
   .kopfleiste { display: flex; align-items: center; gap: 14px; padding: 6px 4px 18px; border-bottom: 1px solid var(--linie); margin-bottom: 20px; }
   .marke { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--weiss); }
@@ -178,6 +190,18 @@
 </style>
 </head>
 <body>
+
+<!-- ================= Taskleiste: zu den einzelnen Schritten (Add-ons hängen sich rechts an) ================= -->
+<nav class="taskleiste" aria-label="Schritte">
+  <div class="innen" id="taskleiste">
+    <div class="task-gruppe" id="taskPlanpruefer">
+      <button class="task" type="button" id="taskStart"><span class="schritt">1</span>Planprüfer</button>
+      <button class="task unter" type="button" data-phase="werk">Werkplanung</button>
+      <button class="task unter" type="button" data-phase="entwurf">Entwurfsplanung</button>
+      <button class="task unter versteckt" type="button" id="taskErgebnis">Ergebnis</button>
+    </div>
+  </div>
+</nav>
 
 <!-- ================= Seite 1: Auswahl und Upload ================= -->
 <main class="seite" id="seite1">
@@ -438,16 +462,38 @@
     if (neu.length) { ergebnisse = neu; aktuell = 0; zeigeStatus(''); zeigeSeite2(); }
   }
 
+  // ---------- Seiten und Taskleiste ----------
+  // Alle Seiten sind <main class="seite">. Add-ons bringen eigene Seiten mit (zum Beispiel id="seiteRaumprogramm").
+  function zeigeSeite(id) {
+    document.querySelectorAll('main.seite').forEach(m => m.classList.toggle('versteckt', m.id !== id));
+    window.scrollTo(0, 0);
+    markiereTaskleiste();
+    document.dispatchEvent(new CustomEvent('planpruefer:seite', { detail: { id } }));
+  }
+  function markiereTaskleiste() {
+    const sichtbar = document.querySelector('main.seite:not(.versteckt)'); const id = sichtbar ? sichtbar.id : '';
+    const imPruefer = id === 'seite1' || id === 'seite2';
+    $('taskPlanpruefer').classList.toggle('aktiv', imPruefer);
+    $('taskStart').classList.toggle('an', id === 'seite1' && !aktuellePhase());
+    document.querySelectorAll('#taskPlanpruefer [data-phase]').forEach(b => b.classList.toggle('an', id === 'seite1' && aktuellePhase() === b.dataset.phase));
+    $('taskErgebnis').classList.toggle('versteckt', ergebnisse.length === 0);
+    $('taskErgebnis').classList.toggle('an', id === 'seite2');
+  }
+  $('taskStart').addEventListener('click', () => zeigeSeite1());
+  document.querySelectorAll('#taskPlanpruefer [data-phase]').forEach(b => b.addEventListener('click', () => {
+    const r = radios.find(x => x.value === b.dataset.phase);
+    if (r && !r.checked) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); }
+    zeigeSeite1();
+  }));
+  $('taskErgebnis').addEventListener('click', () => { if (ergebnisse.length) zeigeSeite2(); });
+  radios.forEach(r => r.addEventListener('change', markiereTaskleiste));
+
   // ---------- Seite 2 ----------
   function zeigeSeite2() {
-    $('seite1').classList.add('versteckt'); $('seite2').classList.remove('versteckt');
-    window.scrollTo(0, 0);
+    zeigeSeite('seite2');
     zeigePlan(aktuell);
   }
-  function zeigeSeite1() {
-    $('seite2').classList.add('versteckt'); $('seite1').classList.remove('versteckt');
-    window.scrollTo(0, 0);
-  }
+  function zeigeSeite1() { zeigeSeite('seite1'); }
   $('zurueck').addEventListener('click', zeigeSeite1);
   $('markeLink').addEventListener('click', ev => { ev.preventDefault(); zeigeSeite1(); });
   $('zurueckPlan').addEventListener('click', () => { if (aktuell > 0) zeigePlan(aktuell - 1); });
@@ -518,6 +564,8 @@
       if (offen.length === 0) z.textContent = 'Keine Befunde';
       else if (offenF + offenH === 0) z.textContent = 'Alles abgehakt – bitte neu hochladen';
       else z.textContent = [offenF ? `${offenF} ${offenF === 1 ? 'Fehler' : 'Fehler'} offen` : '', offenH ? `${offenH} ${offenH === 1 ? 'Hinweis' : 'Hinweise'}` : ''].filter(Boolean).join(' · ');
+      // Für Add-ons: sind alle Befunde dieses Plans erledigt (oder gab es keine)?
+      document.dispatchEvent(new CustomEvent('planpruefer:abgehakt', { detail: { alleErledigt: offenF + offenH === 0 } }));
     }
   }
 
@@ -738,7 +786,12 @@
 
   aktualisiere();
   // Für Vorführungen und Tests: Dateien von außen übergeben
-  window.planpruefer = { fuegeHinzu, pruefeAlle };
+  // Für Add-ons: Ergebnisse (mit den geprüften Dateien), Seitenwechsel, Hilfsfunktionen
+  window.planpruefer = { fuegeHinzu, pruefeAlle, zeigeSeite, zeigeSeite2, get ergebnisse() { return ergebnisse; }, el, markiereTaskleiste, ladePdfjs };
+  markiereTaskleiste();
 </script>
+<!-- Add-on Raumprogramm (Experiment): zum Entfernen diese zwei Zeilen löschen (oder raumprogramm.js/.css löschen) -->
+<link rel="stylesheet" href="/raumprogramm.css">
+<script src="/raumprogramm.js"></script>
 </body>
 </html>

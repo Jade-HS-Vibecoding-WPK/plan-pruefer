@@ -159,6 +159,54 @@ Weiter langsam: das Lesen der Grafik (bei PowerShell schwer schneller zu machen)
 
 **Noch nicht gespeichert:** Die Änderungen sind nicht committet. Wenn ihr zufrieden seid, in GitHub Desktop committen und "Push origin" klicken. Damit der Server auf 8080 die neuen Prüfungen nutzt, ihn neu starten (`Planpruefer-starten.cmd`).
 
+## Add-on Raumprogramm-Prüfer (Experiment, Mittwochabend)
+
+**Rückweg:** Der Stand davor ist als Git-Markierung **`vor-raumprogramm`** gesichert (Commit 7a5fafb, Testlauf 131/0/2). Das Add-on lässt sich auch ohne Zurückspringen abschalten: in `pruefung/web/index.html` die zwei Zeilen unter "Add-on Raumprogramm" löschen (oder `raumprogramm.js` löschen). Die Taskleiste bleibt dann mit dem Planprüfer allein.
+
+**Neu:**
+- **Taskleiste** über dem Banner auf allen Seiten: ① Planprüfer (Werkplanung, Entwurfsplanung, Ergebnis) › ② Raumprogramm.
+- **Übergang:** Sind alle Befunde abgehakt (oder gab es keine), rutscht unter der Liste die Kachel "Alles abgehakt, stark!" herein, mit Knopf zum Raumprogramm-Prüfer. Die geprüften Pläne werden mitgenommen.
+- **Raumprogramm-Seite** im Bento-Layout: Kachel ① Raumprogramm (PDF), Kachel ② Grundrisse (alle Geschosse), Start über die Lupe.
+- **Raum-Puzzle als Ergebnis:**
+  - Jede Zeile des Raumprogramms ist eine Karte mit Soll, Ist (Summe der zugeordneten Räume) und Abweichung in m² und %.
+  - Ein Füllbalken mit Soll-Strich, Farbe nach Abweichung: grün bis 10 %, gelb bis 25 %, rot darüber.
+  - Die Räume liegen als Chips auf den Karten: zum Korrigieren ziehen oder antippen und dann die Karte antippen. "Nicht zugeordnet" sammelt den Rest.
+  - Oben ein Ring "6/10 Zeilen belegt", die Summen und die erkannten Geschosse mit Hinweis, wenn das Programm mehrere Ebenen nennt, aber nur ein Geschoss erkannt wird. Konfetti, wenn alle Zeilen belegt sind.
+- **Lesen:** Das Raumprogramm liest pdf.js im Browser (auch Word- und iPhone-PDFs; eingescannte Seiten gehen nicht). Erkannt werden Gruppen (linke Spalte), Raumnamen, Flächen ("40 qm", "m²"), "entwurfsabhängig" und die Summe. Der Text nach der Summe wird nicht beachtet. Grundrisse liest der Server (`/raeume`, nur Text, schnell): Raumstempel mit Fläche (nur Zahlen mit Komma) und das Geschoss aus Beschriftungen wie "Erdgeschoss M1:50". Zwei Grundrisse auf einem Blatt werden nach ihren Beschriftungen getrennt.
+- **Zuordnung:** gleiche oder ähnliche Wörter, auch mit Tippfehlern ("Austellung"), Wortanfang ("Büro" → "Büroräume") und bekannten Gleichsetzungen (Beh.-W = WC, Anrichte = Küche).
+- **Getestet:** Museumsplan gegen `testplaene/raumprogramm/Raumprogramm.pdf`: alle 10 Zeilen und die Summe 550 m² richtig gelesen, 6/10 belegt. Cafe +6,5 % (Cafe und Küche), Vortragsraum −4,8 %, Stuhllager +28,6 %, Ausstellung −34 % (nur Erdgeschoss), Hinweis "nur ein Geschoss". Ziehen, Antippen und der Weg über die Übergangs-Kachel funktionieren.
+- **Dateien:** `pruefung/raumprogramm.ps1`, `pruefung/web/raumprogramm.js`, `pruefung/web/raumprogramm.css`; in `server.ps1` zwei Anschlüsse; in `index.html` Taskleiste, Seitenwechsel und die zwei Ladezeilen.
+- **Fehler behoben:** Bei einem Plan ohne erkannte Geschoss-Beschriftung kam "Beim Prüfen ist ein Fehler aufgetreten" (leere Liste in PowerShell 5.1). Außerdem werden jetzt auch auseinander geschriebene Geschosse wie "GRUNDRISS OBER GESCHOSS" erkannt. Test mit `testplaene/raumprogramm/Erdgeschoss.pdf` (zeigt trotz Dateiname das **Obergeschoss**) und dem Museum-EG: beide Geschosse erkannt, 8/10 Zeilen belegt, Ausstellung EG + OG 266,90 m² (+6,8 %).
+- **Wünsche vom Team (Mittwochabend):**
+  - Farben nur noch aus dem Schema Navy/Weiß: bis 10 % weiß, bis 25 % hellblau (#A7B6D0), darüber blau-weiß gestreift; Abweichungs-Schild entsprechend (weiß, hellblau, Navy mit weißem Rand, gestrichelt bei "fehlt"). Keine Bewertung (kein "zu viel/zu wenig"), die Abweichung bleibt eine neutrale Zahl. Balken und Soll-Strich bleiben.
+  - **Zeilen zusammenlegen:** Passen die Überschriften des Raumprogramms nicht zum Entwurf, zieht man eine Karte am Griff ≡ auf eine andere (oder Griff antippen, dann Zielkarte antippen). Soll und Räume zählen dann zusammen (Windfang/Info/Kasse in die Ausstellung: Soll 250 + 40 = 290 m²). Mit × an der eingelegten Zeile wieder trennen.
+  - Leere Datei an den Server: jetzt "Das ist keine PDF-Datei." statt eines allgemeinen Fehlers.
+- **Gemerkt für später:** Darstellung "Grundriss-Kacheln" (Flächen proportional zur Sollfläche). Bilder als Raumprogramm (KI oder Windows-Texterkennung).
+
+## Stand Ende Mittwoch, 18.11. – hier geht es Donnerstag weiter (Freeze 12 Uhr)
+
+**Läuft:**
+- Planprüfer: alle Prüfpunkte, Testlauf **131 richtig, 0 falsch, 2 übersprungen** (etwa 7 Minuten).
+- Fünf Werkpläne als Testfälle.
+- Schneller (Museum etwa 1 statt 4 Minuten).
+- Ladering mit "ca. 0:49".
+- Vollbild mit Strg + Mausrad zum Zoomen und scharfem Ausschnitt.
+- Taskleiste.
+- Add-on Raumprogramm (Raum-Puzzle) als Experiment.
+
+**Rückweg:** Git-Markierung `vor-raumprogramm` = Stand ohne Add-on (Präsentationsstand vom Nachmittag).
+
+**Morgen früh zuerst:**
+1. Server auf 8080 neu starten (`Planpruefer-starten.cmd`), im Browser Strg+F5.
+2. Entscheiden: Add-on Raumprogramm für die Präsentation behalten oder zur Markierung zurück (oder nur die zwei Zeilen in `index.html` löschen).
+3. Einmal den ganzen Ablauf durchspielen: Werkplan prüfen, alles abhaken, Raumprogramm mit Museum-EG und `R_Obergeschoss.pdf`.
+
+**Ideen, falls Zeit ist:**
+- Darstellung "Grundriss-Kacheln" für das Raumprogramm (Team wollte sie sehen).
+- Raumprogramm als Bild (Screenshot): mit KI oder Windows-Texterkennung.
+- Geschoss-Trennung bei zwei Grundrissen auf einem Blatt an einem echten Plan testen.
+- Raumnummern über dem Raumnamen (Plan `06_A1_fehler`) prüfen.
+
 ## Ältere Aufgabenliste (vom Montag, größtenteils erledigt)
 
 1. **Server neu starten**, damit alles Neue gilt: das schwarze Server-Fenster schließen und `Planpruefer-starten.cmd` doppelklicken. (Der Server läuft zurzeit noch mit altem Stand.)

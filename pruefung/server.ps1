@@ -9,6 +9,9 @@
 param([int]$Port = 8080)
 
 . "$PSScriptRoot\pruefungen.ps1"
+# Add-on Raumprogramm (Experiment): nur laden, wenn die Datei da ist
+$script:MitRaumprogramm = Test-Path "$PSScriptRoot\raumprogramm.ps1"
+if ($script:MitRaumprogramm) { . "$PSScriptRoot\raumprogramm.ps1" }
 
 $webOrdner = Join-Path $PSScriptRoot 'web'
 $tempOrdner = Join-Path ([System.IO.Path]::GetTempPath()) 'planpruefer'
@@ -91,7 +94,7 @@ try {
                     $fs = [System.IO.File]::Create($tmp)
                     $req.InputStream.CopyTo($fs)
                     $fs.Close()
-                    $kopf = [System.IO.File]::ReadAllBytes($tmp) | Select-Object -First 5
+                    $kopf = [byte[]]@([System.IO.File]::ReadAllBytes($tmp) | Select-Object -First 5)   # leere Datei: leeres Feld statt Fehler
                     if (([System.Text.Encoding]::ASCII.GetString($kopf)) -ne '%PDF-') {
                         Send-Json $ctx @{ fehler = 'Das ist keine PDF-Datei.' } 400
                         continue
@@ -111,6 +114,28 @@ try {
                     if (Test-Path $tmp) { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
                     if ($bildPfad -and (Test-Path $bildPfad)) { Remove-Item $bildPfad -Force -ErrorAction SilentlyContinue }
                 }
+            }
+            elseif ($req.HttpMethod -eq 'GET' -and ($path -eq '/raumprogramm.js' -or $path -eq '/raumprogramm.css')) {
+                # Add-on Raumprogramm: Seite und Aussehen (fehlen die Dateien, gibt es 404 und die Seite läuft ohne Add-on)
+                $datei = Join-Path $webOrdner ($path.TrimStart('/'))
+                if (Test-Path $datei) {
+                    $ctx.Response.AddHeader('Cache-Control', 'no-store')
+                    Send-Bytes $ctx ([System.IO.File]::ReadAllBytes($datei)) $(if ($path -like '*.js') { 'text/javascript; charset=utf-8' } else { 'text/css; charset=utf-8' })
+                } else { Send-Bytes $ctx ([System.Text.Encoding]::UTF8.GetBytes('Nicht gefunden')) 'text/plain; charset=utf-8' 404 }
+            }
+            elseif ($req.HttpMethod -eq 'POST' -and $path -eq '/raeume' -and $script:MitRaumprogramm) {
+                # Add-on Raumprogramm: Räume mit Fläche und Geschoss aus einem Grundriss (nur Text, schnell)
+                $name = [System.Uri]::UnescapeDataString([string]$req.Headers['X-Dateiname'])
+                if ($req.ContentLength64 -gt 100MB) { Send-Json $ctx @{ fehler = 'Die Datei ist zu groß (maximal 100 MB).' } 413; continue }
+                $tmp = Join-Path $tempOrdner ([guid]::NewGuid().ToString() + '.pdf')
+                try {
+                    $fs = [System.IO.File]::Create($tmp); $req.InputStream.CopyTo($fs); $fs.Close()
+                    $kopf = [byte[]]@([System.IO.File]::ReadAllBytes($tmp) | Select-Object -First 5)   # leere Datei: leeres Feld statt Fehler
+                    if (([System.Text.Encoding]::ASCII.GetString($kopf)) -ne '%PDF-') { Send-Json $ctx @{ fehler = 'Das ist keine PDF-Datei.' } 400; continue }
+                    $r = Get-RaumprogrammRaeume @(Get-PdfTextItems $tmp)
+                    Write-Host ("{0}  Raumprogramm: {1}  ->  {2} Räume, Geschosse: {3}" -f (Get-Date -Format 'HH:mm:ss'), $name, @($r.raeume).Count, (@($r.geschosse) -join ', '))
+                    Send-Json $ctx @{ datei = $name; geschosse = @($r.geschosse); raeume = @($r.raeume | ForEach-Object { @{ name = $_.name; flaeche = $_.flaeche; text = $_.text; geschoss = $_.geschoss } }) }
+                } finally { if (Test-Path $tmp) { Remove-Item $tmp -Force -ErrorAction SilentlyContinue } }
             }
             else {
                 Send-Bytes $ctx ([System.Text.Encoding]::UTF8.GetBytes('Nicht gefunden')) 'text/plain; charset=utf-8' 404
