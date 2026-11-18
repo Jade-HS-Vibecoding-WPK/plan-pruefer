@@ -12,8 +12,8 @@
 
   Geprüft wird:
     - Stimmt die Länge mit der Zahl überein (1 cm Toleranz)? Dann ist die Zahl in Ordnung.
-    - Ist das Stück bis zu 6 cm kürzer als die Zahl, ist das erlaubt. (Im Musterplan sind Stücke an Kettenenden und das
-      Gesamtmaß um 5 cm kürzer als die Zahl, offenbar gehört das zur Zeichenweise.)
+    - Gemessen wird von Querstrich zu Querstrich, nicht die Länge des Linienstücks: ArchiCAD teilt die Linie etwas neben
+      dem Querstrich (im Musterplan 2,5 cm), am Kettenende wäre das Stück sonst 5 cm zu kurz (geklärt mit dem Team 18.11.).
     - Alles andere ist ein Befund: Die Zahl passt nicht zur Maßlinie (eine Zahl ist falsch, oder die Linie).
   Zahlen ohne passendes Maßlinien-Stück (Raumstempel, Höhen, Beschriftungen) werden nicht beachtet.
   Noch nicht geprüft: Maßlinien ohne Zahl, fehlende ganze Innenketten.
@@ -21,7 +21,6 @@
 
 $script:A2mZeichenbreite = 4.25
 $script:A2mToleranz = 0.011
-$script:A2mEndeKuerzer = 0.06
 
 function Get-A2mZahlen($items) {
     $kand = @($items | Where-Object { $_.T -match '^\d{1,3},\d{2}$' -or $_.T -match '^\d{1,2}$' })
@@ -69,28 +68,68 @@ function Get-A2mStueckeNeu($items, $linien) {
         if ([math]::Abs($l.Y1 - $l.Y2) -lt 0.05) { $k = [int][math]::Floor($l.Y1); if (-not $h.ContainsKey($k)) { $h[$k] = New-Object System.Collections.Generic.List[object] }; $h[$k].Add([pscustomobject]@{ Q = $l.Y1; A = [math]::Min($l.X1, $l.X2); B = [math]::Max($l.X1, $l.X2); L = $l.Laenge }) }
         elseif ([math]::Abs($l.X1 - $l.X2) -lt 0.05) { $k = [int][math]::Floor($l.X1); if (-not $v.ContainsKey($k)) { $v[$k] = New-Object System.Collections.Generic.List[object] }; $v[$k].Add([pscustomobject]@{ Q = $l.X1; A = [math]::Min($l.Y1, $l.Y2); B = [math]::Max($l.Y1, $l.Y2); L = $l.Laenge }) }
     }
-    # Begrenzung der Maßlinien-Stücke: ein kurzer Querstrich (Maßhilfslinie, 4 bis 16 Punkt) kreuzt die Maßlinie am Ende des Stücks
-    $quer = @{ h = New-Object System.Collections.Generic.List[object]; v = New-Object System.Collections.Generic.List[object] }
-    $querFach = @{}
+    # Begrenzung der Maßlinien-Stücke: ein kurzer Strich (4 bis 16 Punkt) mittig auf dem Ende des Stücks. Entweder ein gerader
+    # Querstrich (Maßhilfslinie, so im Musterplan) oder ein schräger Strich (Schrägstrich nach DIN, so in anderen Plänen).
+    $querFach = @{}; $schraegFach = @{}
     foreach ($l in $linien) {
         if ($l.Laenge -lt 4 -or $l.Laenge -gt 16) { continue }
-        if ([math]::Abs($l.X1 - $l.X2) -lt 0.05) { $art = 'v'; $q = $l.X1; $a1 = [math]::Min($l.Y1, $l.Y2); $b1 = [math]::Max($l.Y1, $l.Y2) }
-        elseif ([math]::Abs($l.Y1 - $l.Y2) -lt 0.05) { $art = 'h'; $q = $l.Y1; $a1 = [math]::Min($l.X1, $l.X2); $b1 = [math]::Max($l.X1, $l.X2) }
+        $dx = [math]::Abs($l.X1 - $l.X2); $dy = [math]::Abs($l.Y1 - $l.Y2)
+        if ($dx -lt 0.05) { $art = 'v'; $q = $l.X1; $a1 = [math]::Min($l.Y1, $l.Y2); $b1 = [math]::Max($l.Y1, $l.Y2) }
+        elseif ($dy -lt 0.05) { $art = 'h'; $q = $l.Y1; $a1 = [math]::Min($l.X1, $l.X2); $b1 = [math]::Max($l.X1, $l.X2) }
+        elseif ($dx / $dy -ge 0.5 -and $dx / $dy -le 2) {
+            $mx = ($l.X1 + $l.X2) / 2; $my = ($l.Y1 + $l.Y2) / 2
+            $k = "$([int][math]::Floor($mx / 4))|$([int][math]::Floor($my / 4))"
+            if (-not $schraegFach.ContainsKey($k)) { $schraegFach[$k] = New-Object System.Collections.Generic.List[object] }
+            $schraegFach[$k].Add([pscustomobject]@{ X = $mx; Y = $my })
+            continue
+        }
         else { continue }
         $k = "$art$([int][math]::Floor($q / 4))"
         if (-not $querFach.ContainsKey($k)) { $querFach[$k] = New-Object System.Collections.Generic.List[object] }
         $querFach[$k].Add([pscustomobject]@{ Q = $q; A = $a1; B = $b1 })
     }
-    # Ende einer waagrechten Maßlinie bei (x, y): senkrechter Querstrich bei x, der y überdeckt. Ende einer senkrechten: waagrechter Querstrich bei y, der x überdeckt.
-    $hatTick = {
+    # Ende einer waagrechten Maßlinie bei (x, y): senkrechter Querstrich bei x, der mittig auf y sitzt. Ende einer senkrechten:
+    # waagrechter Querstrich bei y, mittig auf x. Oder ein schräger Strich mit Mitte auf dem Ende.
+    # Liefert die Lage des Strichs (oder $null). ArchiCAD teilt die Linienstücke nicht genau am geraden Querstrich, sondern
+    # etwas versetzt (im Musterplan 1,42 Punkt = 2,5 cm bei 1:50). Gemessen wird deshalb von Strich zu Strich.
+    # Nicht mittig sitzende Striche (Wandlinien, Hilfslinien von Bauteilen) zählen nicht: lieber kein Befund als ein falscher.
+    $tickBei = {
         param($art, $x, $y)
         $pos = if ($art -eq 'h') { $x } else { $y }; $quer2 = if ($art -eq 'h') { $y } else { $x }
         $gesucht = if ($art -eq 'h') { 'v' } else { 'h' }
+        # Rang: mittig und mindestens 6 Punkt lang (gestrichelte Hilfslinien haben kürzere Striche) vor nur mittig
+        $mittig = $null; $mittigD = 99; $lang = $null; $langD = 99
         foreach ($dk in -1, 0, 1) {
             $k = "$gesucht$([int][math]::Floor($pos / 4) + $dk)"
-            if ($querFach.ContainsKey($k)) { foreach ($s in $querFach[$k]) { if ([math]::Abs($s.Q - $pos) -le 3 -and $quer2 -ge ($s.A - 1) -and $quer2 -le ($s.B + 1)) { return $true } } }
+            if ($querFach.ContainsKey($k)) {
+                foreach ($s in $querFach[$k]) {
+                    $dd = [math]::Abs($s.Q - $pos)
+                    if ($dd -gt 3 -or [math]::Abs(($s.A + $s.B) / 2 - $quer2) -gt 0.6) { continue }
+                    if ($dd -lt $mittigD) { $mittig = $s.Q; $mittigD = $dd }
+                    if (($s.B - $s.A) -ge 6 -and $dd -lt $langD) { $lang = $s.Q; $langD = $dd }
+                }
+            }
         }
-        $false
+        if ($null -ne $lang) { return $lang }
+        if ($null -ne $mittig) { return $mittig }
+        foreach ($di in -1, 0, 1) {
+            foreach ($dj in -1, 0, 1) {
+                $k = "$([int][math]::Floor($x / 4) + $di)|$([int][math]::Floor($y / 4) + $dj)"
+                if ($schraegFach.ContainsKey($k)) {
+                    foreach ($s in $schraegFach[$k]) {
+                        if ([math]::Abs($s.X - $x) -le 1 -and [math]::Abs($s.Y - $y) -le 1) { return $(if ($art -eq 'h') { $s.X } else { $s.Y }) }
+                    }
+                }
+            }
+        }
+        $null
+    }
+    # Stück von Querstrich zu Querstrich (oder $null, wenn ein Ende keinen Querstrich hat)
+    $zuStueck = {
+        param($art, $s)
+        if ($art -eq 'h') { $ta = & $tickBei 'h' $s.A $s.Q; $tb = & $tickBei 'h' $s.B $s.Q } else { $ta = & $tickBei 'v' $s.Q $s.A; $tb = & $tickBei 'v' $s.Q $s.B }
+        if ($null -eq $ta -or $null -eq $tb -or $tb -le $ta) { return $null }
+        [pscustomobject]@{ Q = $s.Q; A = $ta; B = $tb; L = $tb - $ta; LStueck = $s.L }
     }
     foreach ($z in $zahlen) {
         $n = $z.Item
@@ -101,7 +140,7 @@ function Get-A2mStueckeNeu($items, $linien) {
             if (-not $h.ContainsKey($k)) { continue }
             foreach ($s in $h[$k]) {
                 $d = $s.Q - $n.Y
-                if ($d -ge -1 -and $d -le 4 -and $cx -ge ($s.A - 0.5) -and $cx -le ($s.B + 0.5) -and ((& $hatTick 'h' $s.A $s.Q) -and (& $hatTick 'h' $s.B $s.Q))) { $kandidaten.Add([pscustomobject]@{ Richtung = 'h'; S = $s }) }
+                if ($d -ge -1 -and $d -le 4 -and $cx -ge ($s.A - 0.5) -and $cx -le ($s.B + 0.5)) { $t = & $zuStueck 'h' $s; if ($t) { $kandidaten.Add([pscustomobject]@{ Richtung = 'h'; S = $t }) } }
             }
         }
         # senkrechter Text (von unten nach oben gelesen): Maßlinie knapp rechts daneben, Mitte der Zahl über dem Stück
@@ -110,11 +149,11 @@ function Get-A2mStueckeNeu($items, $linien) {
             if (-not $v.ContainsKey($k)) { continue }
             foreach ($s in $v[$k]) {
                 $d = $s.Q - $n.X
-                if ($d -ge -1 -and $d -le 4 -and $cy -ge ($s.A - 0.5) -and $cy -le ($s.B + 0.5) -and ((& $hatTick 'v' $s.Q $s.A) -and (& $hatTick 'v' $s.Q $s.B))) { $kandidaten.Add([pscustomobject]@{ Richtung = 'v'; S = $s }) }
+                if ($d -ge -1 -and $d -le 4 -and $cy -ge ($s.A - 0.5) -and $cy -le ($s.B + 0.5)) { $t = & $zuStueck 'v' $s; if ($t) { $kandidaten.Add([pscustomobject]@{ Richtung = 'v'; S = $t }) } }
             }
         }
         if ($kandidaten.Count -eq 0) { continue }
-        $passt = @($kandidaten | Where-Object { $diff = $z.Wert - $_.S.L * $ptZuM; $diff -ge -$script:A2mToleranz -and $diff -le $script:A2mEndeKuerzer })
+        $passt = @($kandidaten | Where-Object { $diff = $z.Wert - $_.S.L * $ptZuM; [math]::Abs($diff) -le $script:A2mToleranz })
         $wahl = if ($passt.Count -gt 0) { $passt[0] } else { $kandidaten | Sort-Object { [math]::Abs($z.Wert - $_.S.L * $ptZuM) } | Select-Object -First 1 }
         [pscustomobject]@{ Zahl = $z; Richtung = $wahl.Richtung; Stueck = $wahl.S; LaengeM = $wahl.S.L * $ptZuM; Passt = ($passt.Count -gt 0) }
     }

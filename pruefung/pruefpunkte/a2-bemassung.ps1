@@ -68,7 +68,15 @@ function Get-A2Zahlen($items, $kern, [string]$seite) {
         }
         $false
     }
-    $band = @($items | Where-Object { ($_.T -match $script:MasszahlMuster -or $_.T -match '^\d{1,2}$') -and (Test-A2Seite $_ $kern $seite) -and -not (& $istBrhWert $_) })
+    # Zahlen mit Einheit "m" oder "m²" rechts daneben sind Flächen oder Umfänge aus Raumstempeln (zum Beispiel eine Terrasse
+    # außerhalb des Gebäudes mit 39,59 m²), keine Maßzahlen: Maßketten schreiben keine Einheit
+    $einheiten = @($items | Where-Object { $_.T -match '^m(\s*[²2])?$' })
+    $mitEinheit = {
+        param($n)
+        foreach ($e in $einheiten) { if ([math]::Abs($e.Y - $n.Y) -le 2.5 -and $e.X -gt $n.X -and ($e.X - $n.X) -le 40) { return $true } }
+        $false
+    }
+    $band = @($items | Where-Object { ($_.T -match $script:MasszahlMuster -or $_.T -match '^\d{1,2}$') -and (Test-A2Seite $_ $kern $seite) -and -not (& $istBrhWert $_) -and -not (& $mitEinheit $_) })
     $quer = { param($i) if ($waagrecht) { $i.Y } else { $i.X } }
     $laengs = { param($i) if ($waagrecht) { $i.X } else { $i.Y } }
     $verbraucht = New-Object System.Collections.Generic.HashSet[object]

@@ -76,9 +76,38 @@ function Get-PfadStriche($pfade) {
     }
 }
 
+# Spitzen von Dreiecken, die als eine Fläche (gefüllt, ohne Umrisslinie) oder als ein geschlossener Linienzug gezeichnet sind
+# (so in manchen Plänen der Eingangspfeil). Spitze = Ecke mit zwei gleich langen Seiten (25 % Toleranz), Öffnungswinkel
+# 40 bis 130 Grad, Winkelhalbierende waagrecht oder senkrecht (wie bei Get-PfeilSpitzen). Größe 6 bis 80 Punkt.
+function Get-DreieckSpitzen($pfade) {
+    foreach ($p in @($pfade | Where-Object { -not $_.Kurve -and $_.Teile.Count -eq 1 -and $_.Teile[0].Count -ge 3 -and $_.Teile[0].Count -le 4 })) {
+        $w = $p.X1 - $p.X0; $h = $p.Y1 - $p.Y0
+        if ([math]::Max($w, $h) -lt 6 -or [math]::Max($w, $h) -gt 80) { continue }
+        $pt = @($p.Teile[0])
+        if ($pt.Count -eq 4) { if ([math]::Abs($pt[3].X - $pt[0].X) -gt 0.3 -or [math]::Abs($pt[3].Y - $pt[0].Y) -gt 0.3) { continue }; $pt = @($pt[0], $pt[1], $pt[2]) }
+        for ($i = 0; $i -lt 3; $i++) {
+            $s = $pt[$i]; $a = $pt[($i + 1) % 3]; $b = $pt[($i + 2) % 3]
+            $ax = $a.X - $s.X; $ay = $a.Y - $s.Y; $bx = $b.X - $s.X; $by = $b.Y - $s.Y
+            $la = [math]::Sqrt($ax * $ax + $ay * $ay); $lb = [math]::Sqrt($bx * $bx + $by * $by)
+            if ($la -lt 2.5 -or $lb -lt 2.5 -or [math]::Abs($la - $lb) -gt 0.25 * [math]::Max($la, $lb)) { continue }
+            $wk = [math]::Acos([math]::Max(-1, [math]::Min(1, ($ax * $bx + $ay * $by) / ($la * $lb)))) * 180 / [math]::PI
+            if ($wk -lt 40 -or $wk -gt 130) { continue }
+            $mx = $ax / $la + $bx / $lb; $my = $ay / $la + $by / $lb
+            $ang = [math]::Atan2($my, $mx) * 180 / [math]::PI
+            $abw = [math]::Abs((($ang % 90) + 90) % 90); $abw = [math]::Min($abw, 90 - $abw)
+            if ($abw -gt 12) { continue }
+            [pscustomobject]@{ X = $s.X; Y = $s.Y; Winkel = [math]::Round($wk); Richtung = [math]::Round($ang); Laenge = $la }
+        }
+    }
+}
+
 function Get-A8Eingangspfeil($pfade) {
     $ergebnisse = New-Object System.Collections.Generic.List[object]
     $spitzen = @(Get-PfeilSpitzen @(Get-PfadStriche $pfade))
+    # dazu Spitzen von Dreiecken aus einem Stück (gefüllte Fläche oder geschlossener Linienzug), wenn dort nicht schon eine Spitze liegt
+    foreach ($d in @(Get-DreieckSpitzen $pfade)) {
+        if (-not @($spitzen | Where-Object { [math]::Abs($_.X - $d.X) -lt 1 -and [math]::Abs($_.Y - $d.Y) -lt 1 }).Count) { $spitzen += $d }
+    }
     $boegen = @(Get-TuerBoegen $pfade)
     if ($spitzen.Count -eq 0) {
         $ergebnisse.Add((New-Result 'Eingangspfeil' $false '' 'Im Plan ist kein Eingangspfeil zu finden (Pfeil oder Dreieck vor der Eingangstür).'))

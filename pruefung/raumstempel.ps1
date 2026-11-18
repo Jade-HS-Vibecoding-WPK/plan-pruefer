@@ -53,7 +53,8 @@ function Get-RaumFlaechen($items) {
             if (-not $hoch) { continue }
         }
         [void]$benutzt.Add($n)
-        $label = $labels | Where-Object { [math]::Abs($_.Y - $n.Y) -le 2.5 -and $_.X -lt $n.X -and ($n.X - $_.X) -le 40 } | Select-Object -First 1
+        # "NGF:" links in derselben Zeile (bis 80 Punkt, wie bei c; in manchen Stempeln steht die Zahl rechtsbündig weiter weg)
+        $label = $labels | Where-Object { [math]::Abs($_.Y - $n.Y) -le 2.5 -and $_.X -lt $n.X -and ($n.X - $_.X) -le 80 } | Sort-Object { $n.X - $_.X } | Select-Object -First 1
         $flaechen.Add(@{ Wert = $n.T; X = $n.X; Y = $n.Y; AnkerX = $(if ($label) { $label.X } else { $n.X }); Mit = [bool]$label })
     }
 
