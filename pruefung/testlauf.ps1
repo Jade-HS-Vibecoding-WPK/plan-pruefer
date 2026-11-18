@@ -667,14 +667,28 @@ if ($werkOk -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A5' }).Count -
     $wOk = @($w | Where-Object { $_.Ok }); $wHin = @($w | Where-Object { -not $_.Ok })
     if ($wOk.Count -ge 5 -and @($wHin | Where-Object { $_.Quelle -ne 'hinweis' }).Count -eq 0 -and @($wOk | Where-Object { $_.Angabe -eq 'Raum Büro (Wandmaße)' -and $_.Wert -match '6,49' }).Count -eq 1) { $richtig++; $zeilen.Add("[richtig]      Wandmaße: $($wOk.Count) Räume passen zu den Wand-Maßketten (zum Beispiel Büro 6,49 m), $($wHin.Count) Hinweis(e), keine Fehler") }
     else { $falsch++; $zeilen.Add("[FALSCH]       Wandmaße: $(($w | ForEach-Object { "$($_.Angabe)=$($_.Ok) $($_.Wert)" }) -join ' | ')") }
+    # Seit 18.11.: nur sicher zugeordnete Maßketten (zwei Maße, Fläche oder Umfang auf 1 % genau) lösen einen Hinweis aus.
+    # Büro hat nur eine passende Kette (6,49 m): eine falsche Fläche wird dort nicht mehr bestätigt, aber auch nicht gemeldet.
     $ngf10 = Ersetze-F $itemsF $buero.Felder['NGF'].Wert '34,53'
     $wb = @(Get-A5Wandmasse $ngf10 $linienF | Where-Object { $_.Angabe -eq 'Raum Büro (Wandmaße)' })
-    if ($wb.Count -eq 1 -and -not $wb[0].Ok -and $wb[0].Quelle -eq 'hinweis' -and $wb[0].Detail -match 'Hinweis') { $richtig++; $zeilen.Add("[richtig]      Büro NGF 34,53 statt 31,39 (10 Prozent zu groß): gelber Hinweis 'weicht von den Wandmaßen ab'") }
+    if ($wb.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Büro NGF 34,53 statt 31,39 (nur eine Maßkette): nicht mehr bestätigt, kein unsicherer Hinweis") }
     else { $falsch++; $zeilen.Add("[FALSCH]       Büro NGF +10 Prozent: $(($wb | ForEach-Object { "$($_.Ok) $($_.Quelle) $($_.Detail)" }) -join ' | ')") }
-    $ru10 = Ersetze-F $itemsF $wc.Felder['RU'].Wert '8,540'
-    $wr = @(Get-A5Wandmasse $ru10 $linienF | Where-Object { $_.Angabe -eq 'Raum WC (Wandmaße)' })
-    if ($wr.Count -eq 1 -and -not $wr[0].Ok -and $wr[0].Quelle -eq 'hinweis') { $richtig++; $zeilen.Add("[richtig]      WC RU 8,54 statt 7,76 (10 Prozent zu groß): Hinweis") }
-    else { $falsch++; $zeilen.Add("[FALSCH]       WC RU +10 Prozent: $(($wr | ForEach-Object { "$($_.Ok) $($_.Quelle) $($_.Detail)" }) -join ' | ')") }
+    # Technik hat zwei sichere Maße (3,54 mal 1,94 m): Fläche oder Umfang 10 % falsch gibt einen gelben Hinweis
+    $technik = $stempelF | Where-Object { $_.NameText -eq 'Technik' } | Select-Object -First 1
+    $wt = @(Get-A5Wandmasse (Ersetze-F $itemsF $technik.Felder['NGF'].Wert '7,60') $linienF | Where-Object { $_.Angabe -eq 'Raum Technik (Wandmaße)' })
+    if ($wt.Count -eq 1 -and -not $wt[0].Ok -and $wt[0].Quelle -eq 'hinweis' -and $wt[0].Detail -match 'Hinweis') { $richtig++; $zeilen.Add("[richtig]      Technik NGF 7,60 statt 6,91 (10 Prozent zu groß, Umfang passt): gelber Hinweis") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Technik NGF +10 Prozent: $(($wt | ForEach-Object { "$($_.Ok) $($_.Quelle) $($_.Detail)" }) -join ' | ')") }
+    $wr = @(Get-A5Wandmasse (Ersetze-F $itemsF $technik.Felder['RU'].Wert '12,010') $linienF | Where-Object { $_.Angabe -eq 'Raum Technik (Wandmaße)' })
+    if ($wr.Count -eq 1 -and -not $wr[0].Ok -and $wr[0].Quelle -eq 'hinweis') { $richtig++; $zeilen.Add("[richtig]      Technik RU 12,01 statt 10,92 (10 Prozent zu groß, Fläche passt): Hinweis") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Technik RU +10 Prozent: $(($wr | ForEach-Object { "$($_.Ok) $($_.Quelle) $($_.Detail)" }) -join ' | ')") }
+    # Wohnflächenberechnung: 3 % Putzabzug gilt als passend (Technik-Fläche 6,91 mal 0,97 = 6,70)
+    $wp = @(Get-A5Wandmasse (Ersetze-F $itemsF $technik.Felder['NGF'].Wert '6,70') $linienF | Where-Object { $_.Angabe -eq 'Raum Technik (Wandmaße)' })
+    if ($wp.Count -eq 1 -and $wp[0].Ok -and $wp[0].Wert -match 'Putzabzug') { $richtig++; $zeilen.Add("[richtig]      Technik NGF 6,70 (3 Prozent Putzabzug nach Wohnflächenberechnung): passt") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Technik mit Putzabzug: $(($wp | ForEach-Object { "$($_.Ok) $($_.Quelle) $($_.Wert)" }) -join ' | ')") }
+    # Raumhöhe unter 2 m: nach Wohnflächenberechnung nicht nachprüfbar, keine Meldung
+    $wh = @(Get-A5Wandmasse (Ersetze-F (Ersetze-F $itemsF $technik.Felder['NGF'].Wert '7,60') $technik.Felder['RH'].Wert '1,800') $linienF | Where-Object { $_.Angabe -eq 'Raum Technik (Wandmaße)' })
+    if ($technik.Felder['RH'].Wert -and $wh.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Technik mit RH 1,80 m: Fläche nach Wohnflächenberechnung nicht nachprüfbar, keine Meldung") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Technik RH 1,80: $(if (-not $technik.Felder['RH'].Wert) { 'keine RH im Stempel' } else { ($wh | ForEach-Object { "$($_.Ok) $($_.Quelle)" }) -join ' | ' })") }
     $wl = @(Get-A5Wandmasse $itemsF @())
     if ($wl.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      ohne Maßlinien: Wandmaße nicht nachprüfbar, keine Meldung") } else { $falsch++; $zeilen.Add("[FALSCH]       ohne Maßlinien: $($wl.Count) Ergebnisse") }
     if (@(Get-AktivePruefungen 'entwurf' | Where-Object { $_ -like 'A5*' }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      A5 läuft nur in der Werkplanung") }

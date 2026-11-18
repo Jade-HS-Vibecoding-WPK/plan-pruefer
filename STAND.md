@@ -131,6 +131,32 @@ Stand: Ende Montag, 16.11.2026 (Tag 1 von 5). Der Zeitplan steht in [PLAN.md](PL
 - **Vollbild:** Knopf "Vollbild" über dem Plan. Der Plan mit den Markierungen füllt den Bildschirm und wird in dieser Größe neu gezeichnet. Zurück mit Esc oder "Vollbild schließen". Erlaubt der Browser kein echtes Vollbild, füllt der Plan das Browserfenster (in der Vorschau getestet). Das echte Vollbild in Chrome oder Edge ist noch nicht getestet.
 - **Schärfer:** Der Plan wird mit mindestens doppelter Auflösung gezeichnet (vorher 1,25-fach), höchstens 9000 Bildpunkte an der langen Seite. Große Pläne (Museum) brauchen dadurch im Browser länger zum Zeichnen.
 
+### Schneller prüfen (Mittwoch spät)
+
+Gemessen am Museumsplan (der größte Plan, 41.000 Linien): vorher **etwa 4 Minuten** auf dem Server, jetzt **etwa 1 Minute**. Musterplan vorher etwa 40 s. Das Prüfergebnis ist gleich geblieben.
+
+| Schritt | vorher | jetzt | was geändert wurde |
+|---|---|---|---|
+| A2 Bemaßung | 71 s | 8 s | Hochzahlen nur mit Zahlen derselben Zeile vergleichen, Achsen und Zahlen werden gemerkt |
+| A5 Flächen | 58 s | 2 s | nutzt die gemerkten Zahlen von A2 |
+| Grafik lesen | 33–69 s | 25–29 s | Entpacken ohne Byte-Kopie, Befehle per Nachschlagen, unnötige Fälle übersprungen |
+| A4 Flächen | 4 s | 0 s | Raumstempel von A3 werden wiederverwendet |
+
+Weiter langsam: das Lesen der Grafik (bei PowerShell schwer schneller zu machen) und das Zeichnen großer Pläne im Browser.
+
+**Testlauf danach:** **128 richtig, 0 falsch, 2 übersprungen**, der Lauf selbst dauert jetzt etwa 7 statt 15 Minuten. (Ein erster Versuch hatte 7 FALSCH, weil sich A2 Zahlen nur grob gemerkt hat. Behoben: Der Merkzettel enthält jetzt alle Texte mit Lage.)
+
+### Ladebalken, Zoom, Schärfe (Mittwochabend, in `pruefung/web/index.html`)
+- **Ring um die Lupe** füllt sich während der Prüfung, links daneben nur die geschätzte Restzeit ("ca. 0:49", Wunsch vom Team). Der Server meldet keinen Zwischenstand, die Dauer wird aus der Dateigröße geschätzt. Nach jeder Prüfung merkt sich die Seite, wie schnell der Rechner war, und schätzt dann genauer.
+- **Zoom im Vollbild:** **Strg + Mausrad** (Wunsch vom Team), Mausrad allein verschiebt den vergrößerten Plan (mit Umschalt waagrecht), Ziehen zum Verschieben, Doppelklick zum Vergrößern, Knöpfe −, +, "Einpassen" unten rechts, bis 2500 %. Die Markierungen bleiben beim Zoomen etwa gleich groß.
+- **Schärfe:** Im Vollbild wird der sichtbare Ausschnitt nach jedem Zoomen oder Verschieben in voller Bildschirmauflösung neu gezeichnet (getestet: bei 212 % sind alle Raumstempel lesbar). Beim Museumsplan dauert das jeweils etwa eine halbe Minute, bis dahin sieht man das normale Bild.
+- **A5 Fläche gegen Wandmaße, mit Wohnflächenberechnung** (Wunsch vom Team): Die Auswertung der Pläne hat gezeigt, dass die gelben Hinweise meist von **falsch zugeordneten Maßketten** kamen (zum Beispiel Café 76 m² gegen 2,51 × 5,55 m). Wo die richtigen Ketten gefunden werden, passt die Stempelfläche genau (Technik 6,91 gegen 6,89 m², Außenterrasse 30,00 gegen 4,00 × 7,50 m). Neu:
+  - Ein Hinweis kommt nur noch, wenn zwei Maßketten sicher zum Raum gehören (Fläche oder Umfang auf 1 % genau). Eine einzelne Kette mit der anderen Seite aus RU kann nur noch bestätigen.
+  - Als passend gilt auch: 3 % Putzabzug, Terrasse, Balkon oder Loggia zu 25 % oder 50 %. Räume mit RH unter 2 m werden nicht verglichen.
+  - Ergebnis: In allen ok-Plänen gibt es keine gelben A5-Hinweise mehr. Grenze: Hat ein Raum nur eine passende Maßkette (Büro im Musterplan), fällt eine falsche Fläche dort nicht mehr auf.
+  - Testlauf danach: **131 richtig, 0 falsch, 2 übersprungen** (neue Tests: Technik Fläche +10 %, Umfang +10 %, 3 % Putzabzug, RH 1,80 m).
+- **Server:** Die Seite wird nicht mehr zwischengespeichert (`Cache-Control: no-store`), sonst zeigt der Browser nach Änderungen die alte Fassung. Wirkt nach dem Neustart des Servers.
+
 **Noch nicht gespeichert:** Die Änderungen sind nicht committet. Wenn ihr zufrieden seid, in GitHub Desktop committen und "Push origin" klicken. Damit der Server auf 8080 die neuen Prüfungen nutzt, ihn neu starten (`Planpruefer-starten.cmd`).
 
 ## Ältere Aufgabenliste (vom Montag, größtenteils erledigt)

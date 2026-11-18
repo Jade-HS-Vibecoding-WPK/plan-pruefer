@@ -43,7 +43,19 @@ function Get-A2EchteAchsen($achsen) {
     $a
 }
 
+# Merkt sich den Kern je Plan (A2 und A5 brauchen ihn, die Achsensuche dauert bei großen Plänen einige Sekunden)
+$script:A2KernCache = @{}
 function Get-A2Kern($items, $linien) {
+    $li = @($linien)
+    $schluessel = "$($li.Count)|$(if ($li.Count) { "$($li[0].X1)|$($li[0].Y1)|$($li[$li.Count - 1].X2)|$($li[$li.Count - 1].Y2)" })"
+    if (-not $script:A2KernCache.ContainsKey($schluessel)) {
+        if ($script:A2KernCache.Count -gt 10) { $script:A2KernCache = @{} }
+        $script:A2KernCache[$schluessel] = Get-A2KernNeu $items $li
+    }
+    $script:A2KernCache[$schluessel]
+}
+
+function Get-A2KernNeu($items, $linien) {
     $ach = @(Get-AchsenLinien @($linien))
     $senk = @(Get-A2EchteAchsen @($ach | Where-Object { $_.Richtung -eq 'senkrecht' })); $waag = @(Get-A2EchteAchsen @($ach | Where-Object { $_.Richtung -eq 'waagrecht' }))
     if ($senk.Count -ge 2 -and $waag.Count -ge 2) {
@@ -76,41 +88,72 @@ function Test-A2Seite($i, $kern, [string]$seite) {
 
 # Maßzahlen einer Seite mit Wert in Metern. Hochgestellte 5 (halber Zentimeter) wird zur Zahl davor gezählt.
 # Meter: 1,53 oder 1,25 plus Hochzahl. Zentimeter: 78 oder 13 plus Hochzahl.
+# Merkt sich das Ergebnis je Plan und Seite (A2 und A5 brauchen dieselben Zahlen, das spart beim großen Plan viel Zeit)
+$script:A2ZahlenCache = @{}
 function Get-A2Zahlen($items, $kern, [string]$seite) {
+    $it = @($items)
+    # Schlüssel aus allen Texten mit Lage: schon eine geänderte Zahl (Fehlerplan, Selbsttest) gibt einen neuen Eintrag
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($i in $it) { [void]$sb.Append($i.T).Append('|').Append($i.X).Append('|').Append($i.Y).Append('~') }
+    $schluessel = "$seite|$($kern.Links)|$($kern.Rechts)|$($kern.Oben)|$($kern.Unten)|" + $sb.ToString()
+    if (-not $script:A2ZahlenCache.ContainsKey($schluessel)) {
+        if ($script:A2ZahlenCache.Count -gt 40) { $script:A2ZahlenCache = @{} }
+        $script:A2ZahlenCache[$schluessel] = @(Get-A2ZahlenNeu $it $kern $seite)
+    }
+    $script:A2ZahlenCache[$schluessel]
+}
+
+function Get-A2ZahlenNeu($items, $kern, [string]$seite) {
     $waagrecht = ($seite -eq 'oben' -or $seite -eq 'unten')
     # BRH-Werte (Brüstungshöhe, A10) sind keine Maßketten-Zahlen
-    $brh = @($items | Where-Object { $_.T -cmatch '^BRH' })
-    $istBrhWert = {
-        param($n)
-        foreach ($b in $brh) {
-            if ([math]::Abs($n.Y - $b.Y) -le 2.5 -and ($n.X - $b.X) -gt 3 -and ($n.X - $b.X) -le 45) { return $true }
-            if ([math]::Abs($n.X - $b.X) -le 2 -and ($b.Y - $n.Y) -ge 15 -and ($b.Y - $n.Y) -le 26) { return $true }
-        }
-        $false
-    }
+    $brh = New-Object System.Collections.Generic.List[object]
     # Zahlen mit Einheit "m" oder "m²" rechts daneben sind Flächen oder Umfänge aus Raumstempeln (zum Beispiel eine Terrasse
     # außerhalb des Gebäudes mit 39,59 m²), keine Maßzahlen: Maßketten schreiben keine Einheit
-    $einheiten = @($items | Where-Object { $_.T -match '^m(\s*[²2])?$' })
-    $mitEinheit = {
-        param($n)
-        foreach ($e in $einheiten) { if ([math]::Abs($e.Y - $n.Y) -le 2.5 -and $e.X -gt $n.X -and ($e.X - $n.X) -le 40) { return $true } }
-        $false
+    $einheiten = New-Object System.Collections.Generic.List[object]
+    foreach ($i in $items) {
+        if ($i.T -cmatch '^BRH') { $brh.Add($i) }
+        elseif ($i.T -match '^m(\s*[²2])?$') { $einheiten.Add($i) }
     }
-    $band = @($items | Where-Object { ($_.T -match $script:MasszahlMuster -or $_.T -match '^\d{1,2}$') -and (Test-A2Seite $_ $kern $seite) -and -not (& $istBrhWert $_) -and -not (& $mitEinheit $_) })
-    $quer = { param($i) if ($waagrecht) { $i.Y } else { $i.X } }
-    $laengs = { param($i) if ($waagrecht) { $i.X } else { $i.Y } }
+    $band = New-Object System.Collections.Generic.List[object]
+    foreach ($n in $items) {
+        if (-not ($n.T -match $script:MasszahlMuster -or $n.T -match '^\d{1,2}$')) { continue }
+        if (-not (Test-A2Seite $n $kern $seite)) { continue }
+        $weg = $false
+        foreach ($b in $brh) {
+            if (([math]::Abs($n.Y - $b.Y) -le 2.5 -and ($n.X - $b.X) -gt 3 -and ($n.X - $b.X) -le 45) -or
+                ([math]::Abs($n.X - $b.X) -le 2 -and ($b.Y - $n.Y) -ge 15 -and ($b.Y - $n.Y) -le 26)) { $weg = $true; break }
+        }
+        if (-not $weg) { foreach ($e in $einheiten) { if ([math]::Abs($e.Y - $n.Y) -le 2.5 -and $e.X -gt $n.X -and ($e.X - $n.X) -le 40) { $weg = $true; break } } }
+        if (-not $weg) { $band.Add($n) }
+    }
+    # Hochzahl (einzelne Ziffer) zur Zahl davor: nur Zahlen mit fast gleicher Querlage vergleichen (Fächer zu 5 Punkt)
+    $richtung = if ($waagrecht) { 1 } else { -1 }
+    $fach = @{}
+    foreach ($n in $band) {
+        if ($n.T.Length -lt 2) { continue }
+        $q = if ($waagrecht) { $n.Y } else { $n.X }
+        $k = [int][math]::Floor($q / 5)
+        if (-not $fach.ContainsKey($k)) { $fach[$k] = New-Object System.Collections.Generic.List[object] }
+        $fach[$k].Add($n)
+    }
     $verbraucht = New-Object System.Collections.Generic.HashSet[object]
     $hoch = @{}
-    foreach ($s in @($band | Where-Object { $_.T -match '^\d$' })) {
-        $beste = $null
-        foreach ($n in $band) {
-            if ($n -eq $s -or $n.T.Length -lt 2) { continue }
-            $dq = (& $quer $s) - (& $quer $n)
-            $erwartet = (& $laengs $n) + $(if ($waagrecht) { 1 } else { -1 }) * $n.T.Length * $script:A2Zeichenbreite
-            $dl = [math]::Abs((& $laengs $s) - $erwartet)
-            if ($dq -ge -4.5 -and $dq -le -1.5 -and $dl -le 4.5 -and ($null -eq $beste -or $dl -lt $beste.Abstand)) { $beste = [pscustomobject]@{ N = $n; Abstand = $dl } }
+    foreach ($s in $band) {
+        if ($s.T -notmatch '^\d$') { continue }
+        $sq = if ($waagrecht) { $s.Y } else { $s.X }; $sl = if ($waagrecht) { $s.X } else { $s.Y }
+        $beste = $null; $besterAbstand = 0
+        $k0 = [int][math]::Floor(($sq + 1.5) / 5)
+        foreach ($k in ($k0 - 1)..($k0 + 1)) {
+            if (-not $fach.ContainsKey($k)) { continue }
+            foreach ($n in $fach[$k]) {
+                $nq = if ($waagrecht) { $n.Y } else { $n.X }; $nl = if ($waagrecht) { $n.X } else { $n.Y }
+                $dq = $sq - $nq
+                if ($dq -lt -4.5 -or $dq -gt -1.5) { continue }
+                $dl = [math]::Abs($sl - ($nl + $richtung * $n.T.Length * $script:A2Zeichenbreite))
+                if ($dl -le 4.5 -and ($null -eq $beste -or $dl -lt $besterAbstand)) { $beste = $n; $besterAbstand = $dl }
+            }
         }
-        if ($beste) { [void]$verbraucht.Add($s); $hoch[$beste.N] = [int]$s.T }
+        if ($beste) { [void]$verbraucht.Add($s); $hoch[$beste] = [int]$s.T }
     }
     foreach ($n in $band) {
         if ($verbraucht.Contains($n)) { continue }
@@ -118,7 +161,7 @@ function Get-A2Zahlen($items, $kern, [string]$seite) {
         if ($n.T -match $script:MasszahlMuster) { $wert = [double]::Parse(($n.T -replace ',', '.'), [System.Globalization.CultureInfo]::InvariantCulture); $art = 'm' }
         else { $wert = [double]$n.T / 100 }
         if ($hoch.ContainsKey($n)) { $wert += $hoch[$n] * 0.001 }
-        [pscustomobject]@{ Item = $n; Wert = $wert; Art = $art; Quer = (& $quer $n); Laengs = (& $laengs $n); Hochzahl = $hoch.ContainsKey($n); Text = $n.T }
+        [pscustomobject]@{ Item = $n; Wert = $wert; Art = $art; Quer = $(if ($waagrecht) { $n.Y } else { $n.X }); Laengs = $(if ($waagrecht) { $n.X } else { $n.Y }); Hochzahl = $hoch.ContainsKey($n); Text = $n.T }
     }
 }
 

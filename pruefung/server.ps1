@@ -44,6 +44,8 @@ try {
             $path = $req.Url.AbsolutePath
             if ($req.HttpMethod -eq 'GET' -and ($path -eq '/' -or $path -eq '/index.html')) {
                 $html = [System.IO.File]::ReadAllBytes((Join-Path $webOrdner 'index.html'))
+                # Seite nicht zwischenspeichern: sonst zeigt der Browser nach Änderungen noch die alte Fassung
+                $ctx.Response.AddHeader('Cache-Control', 'no-store')
                 Send-Bytes $ctx $html 'text/html; charset=utf-8'
             }
             elseif ($req.HttpMethod -eq 'GET' -and $path -eq '/status') {

@@ -72,7 +72,15 @@
   .start:hover:not(:disabled) { transform: scale(1.07); }
   .start:disabled { background: var(--akzent); opacity: .45; cursor: not-allowed; box-shadow: none; }
   .start svg { width: 30px; height: 30px; }
-  .start.laeuft svg { animation: suchen 1.1s ease-in-out infinite; }
+  .start.laeuft svg.lupe { animation: suchen 1.1s ease-in-out infinite; }
+  /* Runder Ladebalken um die Lupe (Fortschritt nach geschätzter Dauer) */
+  .start svg.ring { position: absolute; inset: -9px; width: 82px; height: 82px; pointer-events: none; transform: rotate(-90deg); opacity: 0; transition: opacity .2s; }
+  .start.laeuft svg.ring { opacity: 1; }
+  .start svg.ring circle { fill: none; stroke-width: 5; }
+  .start svg.ring .spur { stroke: rgba(167, 182, 208, .25); }
+  .start svg.ring .fortschritt { stroke: var(--weiss); stroke-linecap: round; transition: stroke-dashoffset .25s linear; }
+  .start .zeit { position: absolute; right: calc(100% + 18px); top: 50%; transform: translateY(-50%); white-space: nowrap; font-size: 13px; font-weight: 600; color: var(--weiss); font-variant-numeric: tabular-nums; }
+  .start.laeuft { background: var(--weiss); opacity: 1; }
   @keyframes suchen { 0%, 100% { transform: translate(-3px, 0) rotate(-8deg); } 50% { transform: translate(3px, -2px) rotate(8deg); } }
   .status { grid-column: 1 / -1; color: var(--akzent); text-align: center; min-height: 24px; }
   .datenschutz { grid-column: 1 / -1; color: var(--leise); font-size: 13px; text-align: center; margin: 0; }
@@ -104,9 +112,18 @@
   .vollbild-knopf { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; background: var(--kachel-hell); color: var(--weiss); border: 1px solid var(--linie); border-radius: 999px; padding: 5px 14px; font: inherit; font-size: 13px; cursor: pointer; }
   .vollbild-knopf:hover { border-color: var(--akzent); }
   .vollbild-knopf svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-  .plan:fullscreen, .plan.vollbild-ersatz { border-radius: 0; display: grid; place-items: center; overflow: auto; }
+  .plan:fullscreen, .plan.vollbild-ersatz { border-radius: 0; display: block; overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
+  .plan.zieht { cursor: grabbing; }
   .plan.vollbild-ersatz { position: fixed; inset: 0; z-index: 50; }
-  .plan:fullscreen .planbild, .plan.vollbild-ersatz .planbild { width: min(100vw, calc(100vh * var(--ar, 1.41))); }
+  /* Im Vollbild wird das Planbild per JavaScript eingepasst, gezoomt und verschoben (transform) */
+  .plan:fullscreen .planbild, .plan.vollbild-ersatz .planbild { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .planbild canvas.ausschnitt { position: absolute; pointer-events: none; }
+  .plan .zoomleiste { display: none; position: fixed; right: 14px; bottom: 14px; z-index: 2; gap: 6px; background: var(--grund); border-radius: 999px; padding: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.35); align-items: center; }
+  .plan:fullscreen .zoomleiste, .plan.vollbild-ersatz .zoomleiste { display: flex; }
+  .zoomleiste button { min-width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--linie); background: var(--kachel); color: var(--weiss); font: inherit; font-size: 18px; font-weight: 700; cursor: pointer; padding: 0 12px; }
+  .zoomleiste button.text { font-size: 13px; font-weight: 600; }
+  .zoomleiste button:hover { border-color: var(--akzent); }
+  .zoomleiste .stufe { color: var(--akzent); font-size: 13px; min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; }
   .plan.vollbild-ersatz .schliessen { display: block; position: fixed; }
   .plan .schliessen { display: none; position: absolute; top: 14px; right: 14px; z-index: 2; background: var(--grund); color: var(--weiss); border: 0; border-radius: 999px; padding: 8px 16px; font: inherit; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
   .plan:fullscreen .schliessen { display: block; position: fixed; }
@@ -200,7 +217,9 @@
       <div class="leise" id="ablageText">Erst oben die Planungsphase wählen.</div>
       <div class="dateien" id="dateiListe"></div>
       <button class="start" id="start" type="button" disabled title="Prüfung starten" aria-label="Prüfung starten">
-        <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="8.5" fill="none" stroke="currentColor" stroke-width="3.5"/><path d="M19.5 19.5 L27 27" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg>
+        <svg class="lupe" viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="8.5" fill="none" stroke="currentColor" stroke-width="3.5"/><path d="M19.5 19.5 L27 27" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg>
+        <svg class="ring" viewBox="0 0 82 82" aria-hidden="true"><circle class="spur" cx="41" cy="41" r="37"/><circle class="fortschritt" id="ringFortschritt" cx="41" cy="41" r="37"/></svg>
+        <span class="zeit" id="zeit" aria-live="off"></span>
       </button>
     </div>
 
@@ -340,13 +359,60 @@
     return j.id;
   }
 
+  // ---------- Fortschritt: Ring um die Lupe und Zeitangabe ----------
+  // Der Server meldet während der Prüfung nichts. Die Dauer wird deshalb aus der Dateigröße geschätzt
+  // (Sekunden pro MB). Nach jeder Prüfung merkt sich die Seite, wie schnell dieser Rechner wirklich war.
+  const RATE_SCHLUESSEL = 'planpruefer-sekunden-pro-mb';
+  const GRUNDZEIT = 3;            // Sekunden pro Plan unabhängig von der Größe
+  const KI_ZUSCHLAG = 25;         // Sekunden, wenn die KI mitprüft
+  function leseRate() { try { const v = parseFloat(localStorage.getItem(RATE_SCHLUESSEL)); if (v > 5 && v < 2000) return v; } catch (e) {} return 130; }
+  function merkeRate(sekunden, bytes) {
+    const mb = bytes / 1048576; if (mb < 0.02) return;
+    const neu = Math.max(5, (sekunden - GRUNDZEIT) / mb);
+    try { localStorage.setItem(RATE_SCHLUESSEL, String(Math.round((leseRate() + neu) / 2))); } catch (e) {}
+  }
+  function schaetze(datei, mitKi) { return GRUNDZEIT + leseRate() * datei.size / 1048576 + (mitKi ? KI_ZUSCHLAG : 0); }
+  function uhr(s) { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+  const ringKreis = $('ringFortschritt'), RING_UMFANG = 2 * Math.PI * 37;
+  ringKreis.style.strokeDasharray = RING_UMFANG;
+  function setzeRing(anteil) { ringKreis.style.strokeDashoffset = RING_UMFANG * (1 - Math.max(0, Math.min(1, anteil))); }
+  setzeRing(0);
+  let fortschritt = null;
+  function starteFortschritt(gesamt) {
+    const t0 = performance.now();
+    const st = { t0, gesamt, fertigBis: 0, fertigZeit: 0 };
+    const tick = () => {
+      const vergangen = (performance.now() - t0) / 1000;
+      // geschätzter Anteil; über der Schätzung kriecht der Ring langsam weiter auf 99 %
+      let anteil = vergangen / st.gesamt;
+      if (anteil > 0.95) anteil = 0.95 + 0.04 * (1 - Math.exp(-(vergangen - 0.95 * st.gesamt) / Math.max(5, 0.3 * st.gesamt)));
+      setzeRing(anteil);
+      const rest = st.gesamt - vergangen;
+      $('zeit').textContent = `ca. ${uhr(Math.max(1, rest))}`;
+    };
+    tick();
+    st.timer = setInterval(tick, 250);
+    fortschritt = st;
+    return st;
+  }
+  function stoppeFortschritt() {
+    if (!fortschritt) return;
+    clearInterval(fortschritt.timer); setzeRing(1);
+    $('zeit').textContent = '';
+    fortschritt = null;
+    setTimeout(() => { if (!fortschritt) { setzeRing(0); $('zeit').textContent = ''; } }, 2500);
+  }
+
   async function pruefeAlle() {
     const phase = aktuellePhase();
     if (!phase || gewaehlt.length === 0 || laeuft) return;
     laeuft = true; start.classList.add('laeuft'); aktualisiere();
     const neu = [];
+    const schaetzungen = gewaehlt.map(f => schaetze(f, kiAn.checked));
+    const st = starteFortschritt(schaetzungen.reduce((a, b) => a + b, 0));
     for (let i = 0; i < gewaehlt.length; i++) {
       const f = gewaehlt[i];
+      const tPlan = performance.now();
       zeigeStatus(`Prüfe ${gewaehlt.length > 1 ? `Plan ${i + 1} von ${gewaehlt.length}: ` : ''}${f.name} …`);
       try {
         const mitKi = kiAn.checked;
@@ -357,11 +423,17 @@
         if (!r.ok) throw new Error(daten.fehler || 'Unbekannter Fehler');
         if (bildFehler) (daten.meldungen = daten.meldungen || []).push('Das Bild für die KI konnte nicht erzeugt werden (' + bildFehler + '). Die KI hat stattdessen das PDF benutzt, das ist ungenauer.');
         neu.push({ datei: f, daten, erledigt: new Set() });
+        // gemessene Dauer merken (ohne KI, die schwankt stark) und die Schätzung für die übrigen Pläne anpassen
+        const dauer = (performance.now() - tPlan) / 1000;
+        if (!kiAn.checked) merkeRate(dauer, f.size);
+        const vergangen = (performance.now() - st.t0) / 1000;
+        st.gesamt = vergangen + gewaehlt.slice(i + 1).reduce((a, g) => a + schaetze(g, kiAn.checked), 0);
       } catch (e) {
         const grund = (e instanceof TypeError) ? 'Der Planprüfer-Server ist nicht erreichbar. Läuft das Fenster von „Planpruefer-starten.cmd“ noch?' : e.message;
         zeigeStatus(`„${f.name}“ konnte nicht geprüft werden: ${grund}`, true);
       }
     }
+    stoppeFortschritt();
     laeuft = false; start.classList.remove('laeuft'); aktualisiere();
     if (neu.length) { ergebnisse = neu; aktuell = 0; zeigeStatus(''); zeigeSeite2(); }
   }
@@ -466,9 +538,13 @@
     const zu = el('button', 'schliessen', 'Vollbild schließen (Esc)'); zu.type = 'button';
     zu.addEventListener('click', schliesseVollbild);
     plan.classList.toggle('vollbild-ersatz', ersatzVollbild);
-    plan.append(zu, bild);
+    const leiste = el('div', 'zoomleiste');
+    const knopf = (text, titel, fn, cls) => { const b = el('button', cls || '', text); b.type = 'button'; b.title = titel; b.addEventListener('click', ev => { ev.stopPropagation(); fn(); }); b.addEventListener('pointerdown', ev => ev.stopPropagation()); return b; };
+    leiste.append(knopf('−', 'Verkleinern', () => zoomUm(1 / 1.6)), el('span', 'stufe', '100 %'), knopf('+', 'Vergrößern', () => zoomUm(1.6)), knopf('Einpassen', 'Ganzen Plan zeigen', einpassen, 'text'));
+    plan.append(zu, leiste, bild);
     bild.append(c);
-    aktuelleSeite = seite;
+    aktuelleSeite = seite; aktuellRoh = roh;
+    if (vollbildAktiv()) setTimeout(einpassen, 60);
     // Markierungen: die Positionen vom Server sind in Punkt, von links oben gemessen (wie die Seite in pdf.js)
     const ns = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(ns, 'svg'); svg.setAttribute('class', 'marken');
@@ -490,7 +566,7 @@
 
   // Scharf zeichnen: so viele Bildpunkte wie auf dem Bildschirm (mal Pixeldichte, bis 3fach), mindestens 2fach,
   // höchstens 9000 Bildpunkte an der langen Seite (Grenze der Browser)
-  let aktuelleSeite = null;
+  let aktuelleSeite = null, aktuellRoh = null;
   async function maleSeite(seite, cssBreite) {
     const roh = seite.getViewport({ scale: 1 });
     const dichte = Math.max(2, Math.min(window.devicePixelRatio || 1, 3));
@@ -505,7 +581,8 @@
   // Vollbild: den Plan mit Markierungen über den ganzen Bildschirm zeigen und in Bildschirmgröße neu zeichnen
   // Erlaubt der Browser kein echtes Vollbild (zum Beispiel in einer eingebetteten Vorschau), füllt der Plan das Browserfenster.
   let ersatzVollbild = false;
-  function setzeErsatz(an) { ersatzVollbild = an; $('plan').classList.toggle('vollbild-ersatz', an); document.body.style.overflow = an ? 'hidden' : ''; neuMalen(); }
+  function setzeErsatz(an) { ersatzVollbild = an; $('plan').classList.toggle('vollbild-ersatz', an); document.body.style.overflow = an ? 'hidden' : ''; vollbildGeaendert(); }
+  function vollbildAktiv() { return ersatzVollbild || document.fullscreenElement === $('plan'); }
   function schliesseVollbild() {
     if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
     if (ersatzVollbild) setzeErsatz(false);
@@ -521,15 +598,123 @@
     catch (err) { setzeErsatz(true); }
   });
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && ersatzVollbild) setzeErsatz(false); });
-  document.addEventListener('fullscreenchange', neuMalen);
-  async function neuMalen() {
-    await new Promise(r => requestAnimationFrame(r));
-    const bild = document.querySelector('#plan .planbild'); if (!bild || !aktuelleSeite) return;
-    const seite = aktuelleSeite;
-    const c = await maleSeite(seite, bild.clientWidth || window.innerWidth);
-    const alt = bild.querySelector('canvas');
-    if (alt && seite === aktuelleSeite) alt.replaceWith(c);
+  document.addEventListener('fullscreenchange', vollbildGeaendert);
+  async function vollbildGeaendert() {
+    await new Promise(r => setTimeout(r, 60));   // kurz warten, bis der Browser die neue Größe kennt
+    const bild = document.querySelector('#plan .planbild'); if (!bild) return;
+    if (vollbildAktiv()) { einpassen(); return; }
+    // zurück in die normale Ansicht: Zoom aufheben
+    zoom = { z: 1, tx: 0, ty: 0, basis: 0 };
+    bild.style.width = ''; bild.style.transform = '';
+    bild.querySelectorAll('canvas.ausschnitt').forEach(k => k.remove());
+    skaliereMarken(1); zeigeStufe();
   }
+
+  // ---------- Zoom im Vollbild ----------
+  // basis = Breite des eingepassten Plans in CSS-Pixeln, z = Zoomstufe, tx/ty = Verschiebung.
+  // Nach jedem Zoomen oder Verschieben wird der sichtbare Ausschnitt in Bildschirmschärfe neu gezeichnet.
+  let zoom = { z: 1, tx: 0, ty: 0, basis: 0 };
+  const ZOOM_MAX = 25;
+  function einpassen() {
+    const plan = $('plan'), bild = plan.querySelector('.planbild'); if (!bild || !aktuellRoh) return;
+    const ar = aktuellRoh.width / aktuellRoh.height;
+    const cw = plan.clientWidth, ch = plan.clientHeight;
+    const basis = Math.min(cw, ch * ar);
+    zoom = { z: 1, basis, tx: (cw - basis) / 2, ty: (ch - basis / ar) / 2 };
+    bild.style.width = basis + 'px';
+    wendeZoomAn();
+  }
+  function wendeZoomAn() {
+    const bild = document.querySelector('#plan .planbild'); if (!bild) return;
+    bild.style.transform = `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.z})`;
+    skaliereMarken(zoom.z); zeigeStufe();
+    planeAusschnitt();
+  }
+  function zeigeStufe() { const s = document.querySelector('#plan .zoomleiste .stufe'); if (s) s.textContent = Math.round(zoom.z * 100) + ' %'; }
+  // Markierungen behalten auf dem Bildschirm ihre Größe (sonst würden sie beim Zoomen riesig)
+  function skaliereMarken(z) {
+    document.querySelectorAll('#plan .marke-punkt').forEach(g => {
+      const ring = g.querySelector('circle.ring'); const cx = +ring.getAttribute('cx'), cy = +ring.getAttribute('cy');
+      g.setAttribute('transform', z > 1 ? `translate(${cx} ${cy}) scale(${1 / Math.sqrt(z)}) translate(${-cx} ${-cy})` : '');
+    });
+  }
+  function zoomBei(faktor, px, py) {
+    const neu = Math.max(1, Math.min(ZOOM_MAX, zoom.z * faktor)); const f = neu / zoom.z;
+    zoom.tx = px - (px - zoom.tx) * f; zoom.ty = py - (py - zoom.ty) * f; zoom.z = neu;
+    if (neu === 1) { einpassen(); return; }
+    wendeZoomAn();
+  }
+  function zoomUm(faktor) { const plan = $('plan'); zoomBei(faktor, plan.clientWidth / 2, plan.clientHeight / 2); }
+
+  // Scharfer Ausschnitt: nur den sichtbaren Teil in voller Auflösung zeichnen (kurz nach dem letzten Zoomen/Verschieben)
+  let ausschnittTimer = null, ausschnittAufgabe = null, ausschnittNr = 0;
+  function planeAusschnitt() {
+    clearTimeout(ausschnittTimer);
+    if (ausschnittAufgabe) { try { ausschnittAufgabe.cancel(); } catch (e) {} ausschnittAufgabe = null; }
+    ausschnittTimer = setTimeout(maleAusschnitt, 250);
+  }
+  async function maleAusschnitt() {
+    const plan = $('plan'), bild = plan.querySelector('.planbild'); if (!bild || !aktuelleSeite || !vollbildAktiv()) return;
+    const nr = ++ausschnittNr, seite = aktuelleSeite, z = zoom.z;
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    const cw = plan.clientWidth, ch = plan.clientHeight;
+    // sichtbarer Bereich in Koordinaten des Planbilds (ungezoomte CSS-Pixel), auf das Planbild begrenzt
+    const hoehe = zoom.basis * aktuellRoh.height / aktuellRoh.width;
+    const x0 = Math.max(0, -zoom.tx / z), y0 = Math.max(0, -zoom.ty / z);
+    const x1 = Math.min(zoom.basis, (cw - zoom.tx) / z), y1 = Math.min(hoehe, (ch - zoom.ty) / z);
+    if (x1 <= x0 || y1 <= y0) return;
+    const pxB = Math.round((x1 - x0) * z * dpr), pxH = Math.round((y1 - y0) * z * dpr);
+    const c = document.createElement('canvas'); c.className = 'ausschnitt'; c.width = pxB; c.height = pxH;
+    const s = (zoom.basis / aktuellRoh.width) * z * dpr;
+    const vp = seite.getViewport({ scale: s, offsetX: -x0 * z * dpr, offsetY: -y0 * z * dpr });
+    ausschnittAufgabe = seite.render({ canvasContext: c.getContext('2d'), viewport: vp });
+    try { await ausschnittAufgabe.promise; } catch (e) { return; }
+    if (nr !== ausschnittNr || seite !== aktuelleSeite || !vollbildAktiv()) return;
+    Object.assign(c.style, { left: x0 + 'px', top: y0 + 'px', width: (x1 - x0) + 'px', height: (y1 - y0) + 'px' });
+    bild.querySelectorAll('canvas.ausschnitt').forEach(k => k.remove());
+    const svg = bild.querySelector('svg.marken'); bild.insertBefore(c, svg);
+  }
+
+  // Bedienung: Strg + Mausrad zoomt (auch Zwei-Finger-Spreizen am Touchpad), Mausrad allein verschiebt den Plan
+  // (mit Umschalt waagrecht), Ziehen verschiebt, Doppelklick vergrößert
+  $('plan').addEventListener('wheel', ev => {
+    if (!vollbildAktiv()) return;
+    ev.preventDefault();
+    if (ev.ctrlKey) {
+      const r = $('plan').getBoundingClientRect();
+      zoomBei(Math.exp(-ev.deltaY * 0.003), ev.clientX - r.left, ev.clientY - r.top);
+      return;
+    }
+    if (zoom.z <= 1) return;
+    const zeile = ev.deltaMode === 1 ? 40 : 1;
+    const dx = (ev.shiftKey ? ev.deltaY : ev.deltaX) * zeile, dy = (ev.shiftKey ? 0 : ev.deltaY) * zeile;
+    zoom.tx -= dx; zoom.ty -= dy;
+    const bild = document.querySelector('#plan .planbild'); if (bild) bild.style.transform = `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.z})`;
+    planeAusschnitt();
+  }, { passive: false });
+  $('plan').addEventListener('dblclick', ev => {
+    if (!vollbildAktiv() || ev.target.closest('button')) return;
+    const r = $('plan').getBoundingClientRect();
+    zoomBei(2, ev.clientX - r.left, ev.clientY - r.top);
+  });
+  let ziehen = null;
+  $('plan').addEventListener('pointerdown', ev => {
+    if (!vollbildAktiv() || ev.button !== 0) return;
+    ziehen = { x: ev.clientX, y: ev.clientY, tx: zoom.tx, ty: zoom.ty, bewegt: false };
+  });
+  window.addEventListener('pointermove', ev => {
+    if (!ziehen) return;
+    const dx = ev.clientX - ziehen.x, dy = ev.clientY - ziehen.y;
+    if (!ziehen.bewegt && Math.hypot(dx, dy) < 4) return;
+    ziehen.bewegt = true; $('plan').classList.add('zieht');
+    zoom.tx = ziehen.tx + dx; zoom.ty = ziehen.ty + dy;
+    const bild = document.querySelector('#plan .planbild'); if (bild) bild.style.transform = `translate(${zoom.tx}px, ${zoom.ty}px) scale(${zoom.z})`;
+  });
+  window.addEventListener('pointerup', () => {
+    if (!ziehen) return;
+    const bewegt = ziehen.bewegt; ziehen = null; $('plan').classList.remove('zieht');
+    if (bewegt) planeAusschnitt();
+  });
 
   let gewaehlteNr = null;
   function waehle(nr, zumPlan) {
@@ -543,7 +728,13 @@
     document.querySelectorAll('.befund').forEach(li => li.classList.toggle('aktiv', +li.dataset.nr === gewaehlteNr));
   }
   let groesse = null;
-  window.addEventListener('resize', () => { clearTimeout(groesse); groesse = setTimeout(() => { if (!$('seite2').classList.contains('versteckt') && ergebnisse[aktuell]) zeigePlan(aktuell); }, 250); });
+  window.addEventListener('resize', () => {
+    clearTimeout(groesse);
+    groesse = setTimeout(() => {
+      if (vollbildAktiv()) { einpassen(); return; }   // im Vollbild nur neu einpassen, nicht alles neu zeichnen
+      if (!$('seite2').classList.contains('versteckt') && ergebnisse[aktuell]) zeigePlan(aktuell);
+    }, 250);
+  });
 
   aktualisiere();
   // Für Vorführungen und Tests: Dateien von außen übergeben

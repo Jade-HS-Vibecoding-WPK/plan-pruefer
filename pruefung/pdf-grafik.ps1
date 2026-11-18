@@ -47,6 +47,7 @@ function Get-PdfDreiecke([string]$Path, [double]$MinKante = 4, [double]$MaxKante
     # (zum Beispiel "cmqq2.83465"), deshalb werden zusammenhängende Buchstaben anschließend in Befehle zerlegt.
     $tokRx = [regex]'(?<str>\((?:\\.|[^\\)])*\))|(?<hex><[0-9A-Fa-f\s]*>)|(?<name>/[^\s/\[\]()<>]*)|(?<num>-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?)|(?<op>[A-Za-z][A-Za-z*]*|[''"])'
     $bekannteOps = @('W*', 'f*', 'B*', 'b*', 'SCN', 'scn', 'BT', 'ET', 'cm', 're', 'gs', 'rg', 'RG', 'sc', 'SC', 'Tc', 'Tz', 'Tf', 'Tr', 'Tm', 'Td', 'TD', 'Tj', 'TJ', 'Tw', 'TL', 'T*', 'Do', 'sh', 'BI', 'ID', 'EI', 'ri', 'q', 'Q', 'm', 'l', 'c', 'v', 'y', 'h', 'f', 'F', 'S', 's', 'n', 'B', 'b', 'W', 'w', 'd', 'j', 'J', 'M', 'i', 'g', 'G', 'k', 'K')
+    $opSet = New-Object System.Collections.Generic.HashSet[string](,[string[]]$bekannteOps)
     $pos = 0
     while ($true) {
         $m = $streamRx.Match($text, $pos)
@@ -58,7 +59,7 @@ function Get-PdfDreiecke([string]$Path, [double]$MinKante = 4, [double]$MaxKante
         $pos = $end + 9
         if ($len -lt 200) { continue }
         try {
-            $ms = New-Object System.IO.MemoryStream(, $bytes[($start + 2)..($start + $len - 1)])
+            $ms = New-Object System.IO.MemoryStream($bytes, ($start + 2), ($len - 2))
             $ds = New-Object System.IO.Compression.DeflateStream($ms, [System.IO.Compression.CompressionMode]::Decompress)
             $out = New-Object System.IO.MemoryStream
             $ds.CopyTo($out)
@@ -78,6 +79,7 @@ function Get-PdfDreiecke([string]$Path, [double]$MinKante = 4, [double]$MaxKante
             if ($t.Groups['num'].Success) { $folge.Add([double]::Parse($t.Groups['num'].Value, $script:GrafikInv)); continue }
             if (-not $t.Groups['op'].Success) { continue }
             $rest = $t.Groups['op'].Value
+            if ($opSet.Contains($rest)) { $folge.Add($rest); continue }
             while ($rest.Length -gt 0) {
                 $treffer = $null
                 foreach ($o in $bekannteOps) { if ($rest.StartsWith($o, [System.StringComparison]::Ordinal)) { if ($null -eq $treffer -or $o.Length -gt $treffer.Length) { $treffer = $o } } }
@@ -166,6 +168,7 @@ function Get-PdfLinien([string]$Path, [double]$MinLaenge = 0) {
     $streamRx = [regex]'stream\r?\n'
     $tokRx = [regex]'(?<str>\((?:\\.|[^\\)])*\))|(?<hex><[0-9A-Fa-f\s]*>)|(?<name>/[^\s/\[\]()<>]*)|(?<num>-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?)|(?<op>[A-Za-z][A-Za-z*]*|[''"])'
     $bekannteOps = @('W*', 'f*', 'B*', 'b*', 'SCN', 'scn', 'BT', 'ET', 'cm', 're', 'gs', 'rg', 'RG', 'sc', 'SC', 'Tc', 'Tz', 'Tf', 'Tr', 'Tm', 'Td', 'TD', 'Tj', 'TJ', 'Tw', 'TL', 'T*', 'Do', 'sh', 'BI', 'ID', 'EI', 'ri', 'q', 'Q', 'm', 'l', 'c', 'v', 'y', 'h', 'f', 'F', 'S', 's', 'n', 'B', 'b', 'W', 'w', 'd', 'j', 'J', 'M', 'i', 'g', 'G', 'k', 'K')
+    $opSet = New-Object System.Collections.Generic.HashSet[string](,[string[]]$bekannteOps)
     $pos = 0
     while ($true) {
         $m = $streamRx.Match($text, $pos)
@@ -177,7 +180,7 @@ function Get-PdfLinien([string]$Path, [double]$MinLaenge = 0) {
         $pos = $end + 9
         if ($len -lt 200) { continue }
         try {
-            $ms = New-Object System.IO.MemoryStream(, $bytes[($start + 2)..($start + $len - 1)])
+            $ms = New-Object System.IO.MemoryStream($bytes, ($start + 2), ($len - 2))
             $ds = New-Object System.IO.Compression.DeflateStream($ms, [System.IO.Compression.CompressionMode]::Decompress)
             $out = New-Object System.IO.MemoryStream
             $ds.CopyTo($out)
@@ -194,6 +197,7 @@ function Get-PdfLinien([string]$Path, [double]$MinLaenge = 0) {
             if ($t.Groups['num'].Success) { $folge.Add([double]::Parse($t.Groups['num'].Value, $script:GrafikInv)); continue }
             if (-not $t.Groups['op'].Success) { continue }
             $rest = $t.Groups['op'].Value
+            if ($opSet.Contains($rest)) { $folge.Add($rest); continue }
             while ($rest.Length -gt 0) {
                 $treffer = $null
                 foreach ($o in $bekannteOps) { if ($rest.StartsWith($o, [System.StringComparison]::Ordinal)) { if ($null -eq $treffer -or $o.Length -gt $treffer.Length) { $treffer = $o } } }
@@ -253,12 +257,24 @@ function Get-PdfLinien([string]$Path, [double]$MinLaenge = 0) {
 
 
 
+# Teile eines Pfads als Feld von Punkt-Feldern (auch bei nur einem Teil verschachtelt, wie Get-PdfPfade es liefert)
+function ConvertTo-PfadTeile($teile) {
+    $arr = New-Object object[] $teile.Count
+    for ($i = 0; $i -lt $teile.Count; $i++) { $arr[$i] = $teile[$i].ToArray() }
+    , $arr
+}
+
 # Kleine gezeichnete Formen (Pfade) aus dem PDF: Pfeile, Dreiecke, Türbögen und ähnliches.
 # Liefert pro Pfad: Teile (Liste von Punktfolgen, Koordinaten wie bei den Textstücken, Y nach unten), Art ('fuellen', 'strich'
 # oder 'beides'), Kurve ($true, wenn Bögen im Pfad sind), Farbe (Füllfarbe R, G, B), X0, Y0, X1, Y1 (Umfassungsrechteck).
 # Nur Pfade, die höchstens MaxBreite Punkt breit und hoch sind (große Wandflächen werden nicht geliefert).
 # Mit -NurKurven werden nur Pfade mit Bögen geliefert (viel schneller, reicht für Türbögen).
 function Get-PdfPfade([string]$Path, [double]$MaxBreite = 80, [switch]$NurKurven, [switch]$MitLinien) {
+    # Befehl -> Fall im switch (nur Befehle, die hier gebraucht werden; alle anderen werden übersprungen, das ist schneller)
+    $opFall = New-Object 'System.Collections.Generic.Dictionary[string,string]'
+    foreach ($o in 'q', 'Q', 'rg', 'g', 'cm', 'm', 'l', 're', 'n') { $opFall[$o] = $o }
+    foreach ($o in 'c', 'v', 'y') { $opFall[$o] = 'KURVE' }
+    foreach ($o in 'S', 's', 'f', 'F', 'f*', 'B', 'B*', 'b', 'b*') { $opFall[$o] = 'MALEN' }
     $latin = [System.Text.Encoding]::GetEncoding(28591)
     $bytes = [System.IO.File]::ReadAllBytes($Path)
     $text = $latin.GetString($bytes)
@@ -268,6 +284,7 @@ function Get-PdfPfade([string]$Path, [double]$MaxBreite = 80, [switch]$NurKurven
     $streamRx = [regex]'stream\r?\n'
     $tokRx = [regex]'(?<str>\((?:\\.|[^\\)])*\))|(?<hex><[0-9A-Fa-f\s]*>)|(?<name>/[^\s/\[\]()<>]*)|(?<num>-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?)|(?<op>[A-Za-z][A-Za-z*]*|[''"])'
     $bekannteOps = @('W*', 'f*', 'B*', 'b*', 'SCN', 'scn', 'BT', 'ET', 'cm', 're', 'gs', 'rg', 'RG', 'sc', 'SC', 'Tc', 'Tz', 'Tf', 'Tr', 'Tm', 'Td', 'TD', 'Tj', 'TJ', 'Tw', 'TL', 'T*', 'Do', 'sh', 'BI', 'ID', 'EI', 'ri', 'q', 'Q', 'm', 'l', 'c', 'v', 'y', 'h', 'f', 'F', 'S', 's', 'n', 'B', 'b', 'W', 'w', 'd', 'j', 'J', 'M', 'i', 'g', 'G', 'k', 'K')
+    $opSet = New-Object System.Collections.Generic.HashSet[string](,[string[]]$bekannteOps)
     $pos = 0
     while ($true) {
         $m = $streamRx.Match($text, $pos)
@@ -279,7 +296,7 @@ function Get-PdfPfade([string]$Path, [double]$MaxBreite = 80, [switch]$NurKurven
         $pos = $end + 9
         if ($len -lt 100) { continue }
         try {
-            $ms = New-Object System.IO.MemoryStream(, $bytes[($start + 2)..($start + $len - 1)])
+            $ms = New-Object System.IO.MemoryStream($bytes, ($start + 2), ($len - 2))
             $ds = New-Object System.IO.Compression.DeflateStream($ms, [System.IO.Compression.CompressionMode]::Decompress)
             $out = New-Object System.IO.MemoryStream
             $ds.CopyTo($out)
@@ -297,6 +314,7 @@ function Get-PdfPfade([string]$Path, [double]$MaxBreite = 80, [switch]$NurKurven
             if ($t.Groups['num'].Success) { $folge.Add([double]::Parse($t.Groups['num'].Value, $script:GrafikInv)); continue }
             if (-not $t.Groups['op'].Success) { continue }
             $rest = $t.Groups['op'].Value
+            if ($opSet.Contains($rest)) { $folge.Add($rest); continue }
             while ($rest.Length -gt 0) {
                 $treffer = $null
                 foreach ($o in $bekannteOps) { if ($rest.StartsWith($o, [System.StringComparison]::Ordinal)) { if ($null -eq $treffer -or $o.Length -gt $treffer.Length) { $treffer = $o } } }
@@ -309,7 +327,8 @@ function Get-PdfPfade([string]$Path, [double]$MaxBreite = 80, [switch]$NurKurven
         foreach ($element in $folge) {
             if ($element -is [double]) { $zahlen.Add($element); continue }
             $op = [string]$element
-            switch -CaseSensitive ($op) {
+            $fall = $null; if (-not $opFall.TryGetValue($op, [ref]$fall)) { $zahlen.Clear(); continue }
+            switch -CaseSensitive ($fall) {
                 'q' { $stack.Push(@($ctm.Clone(), $fuell.Clone())) }
                 'Q' { if ($stack.Count -gt 0) { $z = $stack.Pop(); $ctm = $z[0]; $fuell = $z[1] } }
                 'rg' { if ($zahlen.Count -ge 3) { $fuell = @($zahlen[$zahlen.Count - 3], $zahlen[$zahlen.Count - 2], $zahlen[$zahlen.Count - 1]) } }
@@ -327,7 +346,7 @@ function Get-PdfPfade([string]$Path, [double]$MaxBreite = 80, [switch]$NurKurven
                 }
                 'm' { if ($zahlen.Count -ge 2) { $akt = New-Object System.Collections.Generic.List[object]; $akt.Add([pscustomobject]@{ X = $ctm[0] * $zahlen[$zahlen.Count - 2] + $ctm[2] * $zahlen[$zahlen.Count - 1] + $ctm[4]; Y = $seitenHoehe - ($ctm[1] * $zahlen[$zahlen.Count - 2] + $ctm[3] * $zahlen[$zahlen.Count - 1] + $ctm[5]) }); $teile.Add($akt) } }
                 'l' { if ($zahlen.Count -ge 2 -and $akt) { $akt.Add([pscustomobject]@{ X = $ctm[0] * $zahlen[$zahlen.Count - 2] + $ctm[2] * $zahlen[$zahlen.Count - 1] + $ctm[4]; Y = $seitenHoehe - ($ctm[1] * $zahlen[$zahlen.Count - 2] + $ctm[3] * $zahlen[$zahlen.Count - 1] + $ctm[5]) }) } }
-                { $_ -cin 'c', 'v', 'y' } { $kurve = $true; if ($zahlen.Count -ge 2 -and $akt) { $akt.Add([pscustomobject]@{ X = $ctm[0] * $zahlen[$zahlen.Count - 2] + $ctm[2] * $zahlen[$zahlen.Count - 1] + $ctm[4]; Y = $seitenHoehe - ($ctm[1] * $zahlen[$zahlen.Count - 2] + $ctm[3] * $zahlen[$zahlen.Count - 1] + $ctm[5]) }) } }
+                'KURVE' { $kurve = $true; if ($zahlen.Count -ge 2 -and $akt) { $akt.Add([pscustomobject]@{ X = $ctm[0] * $zahlen[$zahlen.Count - 2] + $ctm[2] * $zahlen[$zahlen.Count - 1] + $ctm[4]; Y = $seitenHoehe - ($ctm[1] * $zahlen[$zahlen.Count - 2] + $ctm[3] * $zahlen[$zahlen.Count - 1] + $ctm[5]) }) } }
                 're' {
                     if ($zahlen.Count -ge 4) {
                         $x = $zahlen[$zahlen.Count - 4]; $y = $zahlen[$zahlen.Count - 3]; $w = $zahlen[$zahlen.Count - 2]; $h = $zahlen[$zahlen.Count - 1]
@@ -336,7 +355,7 @@ function Get-PdfPfade([string]$Path, [double]$MaxBreite = 80, [switch]$NurKurven
                         $teile.Add($akt)
                     }
                 }
-                { $_ -cin 'S', 's', 'f', 'F', 'f*', 'B', 'B*', 'b', 'b*' } {
+                'MALEN' {
                     # Mit -MitLinien zusätzlich jeden geraden Strich aus zwei Punkten liefern (jede Länge), Typ = 'Linie'
                     if ($MitLinien -and ($op -ceq 'S' -or $op -ceq 's') -and -not $kurve -and $teile.Count -eq 1 -and $teile[0].Count -eq 2) {
                         $pa = $teile[0][0]; $pb = $teile[0][1]
@@ -348,7 +367,7 @@ function Get-PdfPfade([string]$Path, [double]$MaxBreite = 80, [switch]$NurKurven
                         if (($x1 - $x0) -le $MaxBreite -and ($y1 - $y0) -le $MaxBreite) {
                             $art = if ($op -cin 'S', 's') { 'strich' } elseif ($op -cin 'f', 'F', 'f*') { 'fuellen' } else { 'beides' }
                             [pscustomobject]@{
-                                Typ = 'Pfad'; Teile = @($teile | ForEach-Object { , @($_.ToArray()) }); Art = $art; Kurve = $kurve
+                                Typ = 'Pfad'; Teile = (ConvertTo-PfadTeile $teile); Art = $art; Kurve = $kurve
                                 Farbe = [pscustomobject]@{ R = $fuell[0]; G = $fuell[1]; B = $fuell[2] }
                                 X0 = $x0; Y0 = $y0; X1 = $x1; Y1 = $y1
                             }
@@ -371,8 +390,8 @@ function Get-PdfGrafikCached([string]$Path) {
     $schluessel = "$Path|$((Get-Item $Path).LastWriteTimeUtc.Ticks)|$((Get-Item $Path).Length)"
     if (-not $script:GrafikCache.ContainsKey($schluessel)) {
         $alle = @(Get-PdfPfade $Path 60 -MitLinien)
-        $linien = @($alle | Where-Object { $_.Typ -eq 'Linie' })
-        $pfade = @($alle | Where-Object { $_.Typ -eq 'Pfad' })
+        $linien = New-Object System.Collections.Generic.List[object]; $pfade = New-Object System.Collections.Generic.List[object]
+        foreach ($x in $alle) { if ($x.Typ -eq 'Linie') { $linien.Add($x) } else { $pfade.Add($x) } }; $linien = $linien.ToArray(); $pfade = $pfade.ToArray()
         $script:GrafikCache = @{}
         $script:GrafikCache[$schluessel] = [pscustomobject]@{ Linien = $linien; Pfade = $pfade; Dreiecke = @(ConvertTo-Dreiecke $pfade) }
     }

@@ -74,7 +74,22 @@ function Get-RaumFlaechen($items) {
 }
 
 # Ordnet jeder Flächenangabe den Raumnamen darüber zu.
+# Merkt sich die Stempel je Plan (A3, A4 und A5 brauchen dieselben). Der Schlüssel enthält alle Texte und Lagen,
+# damit geänderte Pläne (zum Beispiel in den Selbsttests) neu gelesen werden.
+$script:RaumstempelCache = @{}
 function Get-Raumstempel($items) {
+    $it = @($items)
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($i in $it) { [void]$sb.Append($i.T).Append('|').Append($i.X).Append('|').Append($i.Y).Append('~') }
+    $schluessel = $sb.ToString()
+    if (-not $script:RaumstempelCache.ContainsKey($schluessel)) {
+        if ($script:RaumstempelCache.Count -gt 20) { $script:RaumstempelCache = @{} }
+        $script:RaumstempelCache[$schluessel] = @(Get-RaumstempelNeu $it)
+    }
+    $script:RaumstempelCache[$schluessel]
+}
+
+function Get-RaumstempelNeu($items) {
     foreach ($f in @(Get-RaumFlaechen $items)) {
         $toleranz = if ($f.Mit) { 20 } else { 45 }
         $name = $items | Where-Object {
