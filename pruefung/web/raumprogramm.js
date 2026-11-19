@@ -21,7 +21,7 @@
   const leiste = $('taskleiste');
   leiste.append(el('span', 'task-pfeil', '›'));
   const gruppe = el('div', 'task-gruppe'); gruppe.id = 'taskRaumprogramm';
-  const taskKnopf = el('button', 'task'); taskKnopf.type = 'button';
+  const taskKnopf = el('button', 'task'); taskKnopf.type = 'button'; taskKnopf.title = 'Raumprogramm';
   taskKnopf.append(el('span', 'schritt', '2'), document.createTextNode('Raumprogramm'));
   gruppe.append(taskKnopf); leiste.append(gruppe);
 

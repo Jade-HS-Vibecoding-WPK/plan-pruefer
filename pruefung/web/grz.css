@@ -103,7 +103,8 @@
 .gz-check input { margin-top: 4px; width: 18px; height: 18px; accent-color: #FFFFFF; }
 @media (max-width: 700px) {
   .gz-geschoss-kopf { display: none; }
-  .gz-geschoss { grid-template-columns: 1fr 1fr; padding: 10px; border: 1px solid var(--linie); border-radius: 14px; }
+  .gz-geschoss { grid-template-columns: 1fr auto 36px; padding: 10px; border: 1px solid var(--linie); border-radius: 14px; }
+  .gz-g-check { display: flex; gap: 8px; align-items: center; } .gz-g-check::after { content: "zählt mit"; font-size: 13px; color: var(--akzent); }
   .gz-geschoss .gz-g-name { grid-column: 1 / -1; }
   .gz-stapel-zeile { grid-template-columns: 80px 1fr auto; }
 }
@@ -126,3 +127,48 @@
 .gz-zahl.frei { border-color: var(--akzent); border-style: dashed; }
 .gz-doppel { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
 @media (max-width: 700px) { .gz-doppel { grid-template-columns: 1fr; } }
+/* ---- Titelsatz im Kopf */
+.gz-kopf-text { flex: 1 1 320px; min-width: 0; }
+.gz-titelsatz { margin: 6px 0 0; color: var(--akzent); font-size: 15px; line-height: 1.45; max-width: 70ch; }
+
+/* ---- (i)-Knopf mit Erklärung in einfacher Sprache */
+.gz-info { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-left: 8px; padding: 0; border-radius: 50%; border: 1.5px solid var(--akzent); background: transparent; color: var(--akzent); font: italic 700 12px/1 Georgia, serif; cursor: pointer; vertical-align: middle; }
+.gz-info:hover, .gz-info.an { background: var(--weiss); color: var(--grund); border-color: var(--weiss); }
+.gz-info:focus-visible { outline: 2px solid var(--weiss); outline-offset: 2px; }
+.gz-erkl, .gz-wie-detail { display: none; margin: 0; padding: 9px 14px; font-size: 13.5px; line-height: 1.5; color: var(--weiss); background: var(--grund); border: 1px dashed var(--akzent); border-radius: 12px; }
+.gz-erkl.auf, .gz-wie-detail.auf { display: block; animation: gz-auf .25s ease-out; }
+.gz-wie-detail { margin: 0 0 8px 32px; }
+@keyframes gz-auf { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* ---- Was wäre, wenn */
+.gz-wenn { display: flex; flex-direction: column; gap: 12px; }
+.gz-wenn-zeile { display: grid; grid-template-columns: minmax(150px, 1.1fr) minmax(140px, 2fr) 110px auto; gap: 8px 14px; align-items: center; padding: 10px 0; border-top: 1px solid var(--linie); }
+.gz-wenn-zeile:first-child { border-top: 0; }
+.gz-wenn-name { display: flex; flex-direction: column; line-height: 1.25; }
+.gz-wenn-name small { color: var(--leise); font-size: 12px; }
+.gz-wenn-zeile input[type=range] { width: 100%; accent-color: #FFFFFF; height: 28px; cursor: pointer; }
+.gz-wenn-zahl input { padding: 7px 34px 7px 10px; font-size: 15px; }
+.gz-wenn-max { border: 1px solid var(--akzent); background: transparent; color: var(--akzent); border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.gz-wenn-max:hover:not(:disabled) { background: var(--weiss); color: var(--grund); border-color: var(--weiss); }
+.gz-wenn-max:disabled { opacity: .4; cursor: not-allowed; }
+.gz-wenn-info { grid-column: 1 / -1; font-size: 13px; color: var(--akzent); min-height: 18px; }
+.gz-wenn-fuss { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.gz-wenn-fuss .gz-knopf.hell { margin-top: 0; }
+@media (max-width: 700px) { .gz-wenn-zeile { grid-template-columns: 112px 1fr; gap: 6px 10px; padding: 12px 0; } .gz-wenn-name { grid-column: 1 / -1; } .gz-wenn-zeile input[type=range] { grid-column: 1 / -1; } .gz-wenn-max { width: 100%; } .gz-wenn-info { font-size: 12.5px; } }
+
+/* Änderung in Balken, Zahlen und Raster */
+.gz-plus { position: absolute; top: 0; bottom: 0; background: var(--akzent); opacity: .9; transition: left .3s, width .3s; }
+.gz-zahl.plus { border: 1.5px solid var(--akzent); background: rgba(167, 182, 208, .12); }
+.gz-c-plus { background: var(--akzent); box-shadow: inset 0 0 0 2px var(--grund); }
+
+/* Ruhiges Einlaufen beim ersten Zeigen (kein Dauerspektakel, bei "weniger Bewegung" aus) */
+.gz-raster.ein i { animation: gz-ein .32s ease-out backwards; }
+@keyframes gz-ein { from { opacity: 0; transform: scale(.55); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .gz-raster.ein i, .gz-erkl.auf, .gz-wie-detail.auf { animation: none; } .gz-fuell, .gz-plus, .gz-ueber { transition: none; } }
+/* vier Zahlenfelder (mit Änderung) als 2 mal 2 */
+.gz-zahlen.vier { display: grid; grid-template-columns: 1fr 1fr; }
+.gz-zahlen.vier .gz-zahl { min-width: 0; }
+
+/* Weg-Auswahl und manuelle Eingabe */
+.gz-manuell { display: flex; flex-direction: column; gap: 14px; }
+.gz-weg-wahl .klein { max-width: 42ch; }
