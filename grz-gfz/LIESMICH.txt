@@ -1,0 +1,4 @@
+﻿In diesen Ordner kommt das Dokument zur Berechnung von GRZ und GFZ (PDF oder Word).
+Danach baut Claude den Pruefer nach diesem Dokument.
+
+Rueckweg: Git-Markierung vor-grz-gfz = Stand ohne dieses Feature.
