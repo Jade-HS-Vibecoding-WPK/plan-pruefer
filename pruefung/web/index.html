@@ -415,7 +415,7 @@
     if (!k) { kiStatusS.textContent = roh ? 'Das sieht nicht wie ein Google-Gemini-Schlüssel aus (erlaubt sind Buchstaben, Ziffern, Punkt, - und _, ohne Leerzeichen).' : 'Bitte zuerst einen Schlüssel eintragen.'; kiStatusS.classList.add('schlecht'); return; }
     knopf.disabled = true; kiStatusS.textContent = 'Frage bei Google nach … (es wird kein Plan gesendet)';
     try {
-      const r = await fetch('/ki-test', { method: 'POST', headers: { 'X-Ki-Schluessel': k } });
+      const r = await fetch('ki-test', { method: 'POST', headers: { 'X-Ki-Schluessel': k } });
       const d = await r.json();
       if (!r.ok && r.status === 404) throw new Error('Der Server kennt die Prüfung noch nicht. Bitte Planpruefer-starten.cmd neu starten.');
       kiStatusS.textContent = d.ok ? (d.fehler ? '✓ ' + d.fehler : '✓ Der Schlüssel funktioniert. Die KI-Prüfung ist jetzt möglich.') : d.fehler;
@@ -479,7 +479,7 @@
     const c = document.createElement('canvas'); c.width = Math.round(vp.width); c.height = Math.round(vp.height);
     await seite.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
     const blob = await new Promise(r => c.toBlob(r, 'image/png'));
-    const r = await fetch('/bild', { method: 'POST', body: blob });
+    const r = await fetch('bild', { method: 'POST', body: blob });
     const j = await r.json();
     if (!r.ok) throw new Error(j.fehler || 'Bild konnte nicht gespeichert werden');
     return j.id;
@@ -548,7 +548,7 @@
         if (mitKi) { try { bildId = await erzeugeBild(f); } catch (e) { bildFehler = e.message; } }
         const kopf = { 'X-Dateiname': encodeURIComponent(f.name), 'X-Phase': phase, 'X-Ki': (mitKi ? 'ja' : 'nein'), 'X-Bild': bildId };
         if (mitKi && eigenerSchluessel()) kopf['X-Ki-Schluessel'] = eigenerSchluessel();   // eigener Schlüssel nur bei eingeschalteter KI
-        const r = await fetch('/pruefen', { method: 'POST', headers: kopf, body: f });
+        const r = await fetch('pruefen', { method: 'POST', headers: kopf, body: f });
         const daten = await r.json();
         if (!r.ok) throw new Error(daten.fehler || 'Unbekannter Fehler');
         if (bildFehler) (daten.meldungen = daten.meldungen || []).push('Das Bild für die KI konnte nicht erzeugt werden (' + bildFehler + '). Die KI hat stattdessen das PDF benutzt, das ist ungenauer.');
@@ -897,10 +897,10 @@
   markiereTaskleiste();
 </script>
 <!-- Add-on Raumprogramm (Experiment): zum Entfernen diese zwei Zeilen löschen (oder raumprogramm.js/.css löschen) -->
-<link rel="stylesheet" href="/raumprogramm.css">
-<script src="/raumprogramm.js"></script>
+<link rel="stylesheet" href="raumprogramm.css">
+<script src="raumprogramm.js"></script>
 <!-- Add-on GRZ/GFZ (Experiment): zum Entfernen diese zwei Zeilen löschen (oder grz.js/.css löschen) -->
-<link rel="stylesheet" href="/grz.css">
-<script src="/grz.js"></script>
+<link rel="stylesheet" href="grz.css">
+<script src="grz.js"></script>
 </body>
 </html>

@@ -245,7 +245,8 @@
   </section>
 
   <button class="zurueck" id="gzZurueck" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12 H5 M11 5 L4 12 L11 19"/></svg><span id="gzZurueckText">Zurück</span></button>`;
-  document.body.insertBefore(seite, document.querySelector('script'));
+  // vor das erste Skript im <body> (ein Skript im <head>, etwa der Demo-Baustein der Online-Version, ist kein Platz für eine Seite)
+  document.body.insertBefore(seite, document.body.querySelector(':scope > script'));
 
   // Übergang vom Raumprogramm: Kachel am Ende der Raumprogramm-Ergebnisse
   const rpErg = $('rpErgebnis');
@@ -390,7 +391,7 @@
         for (let i = 0; i < dateien.length; i++) {
           const f = dateien[i];
           zeigeStatus(`Lese ${dateien.length > 1 ? `Grundriss ${i + 1} von ${dateien.length}: ` : ''}${f.name} (bei Werkplänen mit Maßketten dauert das etwas länger) …`);
-          const r = await fetch('/grz-grundriss', { method: 'POST', headers: { 'X-Dateiname': encodeURIComponent(f.name) }, body: f });
+          const r = await fetch('grz-grundriss', { method: 'POST', headers: { 'X-Dateiname': encodeURIComponent(f.name) }, body: f });
           const d = await r.json().catch(() => ({ fehler: 'Antwort des Servers nicht lesbar' }));
           if (!r.ok) throw new Error(`${f.name}: ${d.fehler || 'Fehler beim Lesen'}${r.status === 404 ? ' (Server bitte neu starten, damit das Add-on läuft)' : ''}`);
           grundrisse.push(d);

@@ -60,6 +60,15 @@ Wichtig:
 - KI-Funde sind **Hinweise** und müssen von einem Menschen geprüft werden. Bei eingeschalteter KI erzeugt die Seite ein Bild der Planseite und lädt dafür die Bibliothek pdf.js von cdnjs.cloudflare.com (Internet nötig). Die KI-Prüfungen sind **experimentell**: Sie können Fehler übersehen oder falsch melden und brauchen mit dem stärkeren Modell bis zu eine Minute pro Plan.
 - Der kostenlose Zugang hat Mengenlimits. Ist das Limit erreicht, zeigt die App eine Meldung, und die normalen Prüfungen laufen weiter.
 
+## Online-Demo (GitHub Pages)
+
+Unter **https://jade-hs-vibecoding-wpk.github.io/plan-pruefer/** liegt eine Demo zum Ansehen und Ausprobieren.
+
+- **Was geht:** Beispielpläne aus dem `Testordner` prüfen (Werkplan mit und ohne Fehler, Raumprogramm, GRZ mit Lageplan) mit den echten Ergebnissen, und der GRZ-Prüfer mit eigenen Zahlen ("Manuell eingeben") vollständig.
+- **Was nicht geht:** eigene Pläne prüfen und die KI. GitHub Pages liefert nur feste Dateien aus, der PowerShell-Server läuft dort nicht. Eigene Pläne prüft das Programm auf dem eigenen Rechner (`Planpruefer-starten.cmd`).
+- **So entsteht sie:** Bei jedem Push auf `main` stellt der Ablauf `.github/workflows/pages.yml` die Seite zusammen: `pruefung/web` (unverändert), dazu `demo/demo.js` (beantwortet die Server-Anfragen mit den aufgezeichneten Ergebnissen aus `demo/antworten.json`) und die Beispielpläne aus `Testordner/`.
+- **Ergebnisse neu aufzeichnen** (nötig, wenn sich eine Prüfung ändert): lokalen Server starten und die Beispielpläne an `/pruefen`, `/raeume` und `/grz-grundriss` schicken, die Antworten in `demo/antworten.json` speichern (siehe `STAND.md`, Abschnitt "Online-Demo").
+- **Einmalig in GitHub:** Settings > Pages > Source: "GitHub Actions".
 ## Ordner
 
 | Ordner / Datei | Inhalt |

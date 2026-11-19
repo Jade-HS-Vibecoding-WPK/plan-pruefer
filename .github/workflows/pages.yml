@@ -1,0 +1,65 @@
+# Online-Demo des Planprüfers auf GitHub Pages
+#
+# Bei jedem Push auf main (oder von Hand unter "Actions" > "Online-Demo" > "Run workflow") wird die Web-Seite
+# zusammengestellt und veröffentlicht:
+#   - die Seite selbst aus pruefung/web (unverändert)
+#   - der Demo-Baustein aus demo/ (beantwortet die Server-Anfragen mit aufgezeichneten Ergebnissen)
+#   - die Beispielpläne aus Testordner/ (unter neutralen Namen)
+# Der PowerShell-Server läuft online NICHT. Eigene Pläne prüft nur das Programm auf dem eigenen Rechner.
+#
+# Einmalig in GitHub einstellen: Settings > Pages > Build and deployment > Source: "GitHub Actions".
+
+name: Online-Demo
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  veroeffentlichen:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Projekt holen
+        uses: actions/checkout@v4
+
+      - name: Online-Seite zusammenstellen
+        run: |
+          set -e
+          mkdir -p _site/demo
+          cp pruefung/web/index.html pruefung/web/*.js pruefung/web/*.css _site/
+          cp demo/demo.js demo/antworten.json _site/demo/
+          cp "Testordner/Bespiel Grundriss Werkplanung.pdf" _site/demo/werkplan-mit-fehler.pdf
+          cp "Testordner/01 Grundriss EG.pdf" _site/demo/grundriss-eg.pdf
+          cp "Testordner/02 Grundriss OG.pdf" _site/demo/grundriss-og.pdf
+          cp "Testordner/Lageplan GRZ.pdf" _site/demo/lageplan.pdf
+          cp "Testordner/Raumprogramm.pdf" _site/demo/raumprogramm.pdf
+          # Demo-Baustein vor allen anderen Skripten laden (nur online)
+          sed -i 's#</head>#<script src="demo/demo.js"></script>\n</head>#' _site/index.html
+          grep -q 'demo/demo.js' _site/index.html
+          touch _site/.nojekyll
+          ls -la _site _site/demo
+
+      - name: Pages vorbereiten
+        uses: actions/configure-pages@v5
+
+      - name: Seite hochladen
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Veröffentlichen
+        id: deployment
+        uses: actions/deploy-pages@v4

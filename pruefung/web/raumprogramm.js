@@ -89,7 +89,8 @@
   </section>
 
   <button class="zurueck" id="rpZurueck" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12 H5 M11 5 L4 12 L11 19"/></svg>Zurück zum Planprüfer</button>`;
-  document.body.insertBefore(seite, document.querySelector('script'));
+  // vor das erste Skript im <body> (ein Skript im <head>, etwa der Demo-Baustein der Online-Version, ist kein Platz für eine Seite)
+  document.body.insertBefore(seite, document.body.querySelector(':scope > script'));
 
   // Übergangs-Kachel auf der Ergebnisseite: erscheint, wenn alles abgehakt ist
   const weiter = el('section', 'kachel rp-weiter versteckt');
@@ -316,7 +317,7 @@
       for (let i = 0; i < planDateien.length; i++) {
         const f = planDateien[i];
         zeigeStatus(`Lese Räume aus ${planDateien.length > 1 ? `Grundriss ${i + 1} von ${planDateien.length}: ` : ''}${f.name} …`);
-        const r = await fetch('/raeume', { method: 'POST', headers: { 'X-Dateiname': encodeURIComponent(f.name) }, body: f });
+        const r = await fetch('raeume', { method: 'POST', headers: { 'X-Dateiname': encodeURIComponent(f.name) }, body: f });
         const d = await r.json().catch(() => ({ fehler: 'Antwort des Servers nicht lesbar' }));
         if (!r.ok) throw new Error(`${f.name}: ${d.fehler || 'Fehler beim Lesen'}${r.status === 404 ? ' (Server bitte neu starten, damit das Add-on läuft)' : ''}`);
         if (!d.geschosse || !d.geschosse.length) ohneGeschoss.push(f.name);
