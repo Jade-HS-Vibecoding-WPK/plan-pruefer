@@ -64,7 +64,7 @@ function Invoke-Pruefungen([string]$Path, [string]$Phase = 'entwurf', [bool]$Mit
         if ($p.Ki) {
             if (-not $MitKi) { continue }
             if (-not (Test-KiVerfuegbar)) {
-                $script:Meldungen += "KI-Prüfung '$($p.Name)' nicht möglich: Es ist kein KI-Schlüssel hinterlegt (siehe README, Abschnitt 'KI-Prüfung einrichten')."
+                $script:Meldungen += "KI-Prüfung '$($p.Name)' nicht möglich: Es fehlt ein KI-Schlüssel. Bitte auf der Startseite den eigenen Gemini-Schlüssel eintragen (siehe README, Abschnitt 'KI-Prüfung einrichten')."
                 continue
             }
             try {

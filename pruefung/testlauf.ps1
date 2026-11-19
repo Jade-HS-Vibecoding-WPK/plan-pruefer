@@ -362,6 +362,24 @@ if ($werkOk -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A10' }).Count 
     if ($b.Count -eq 1 -and $b[0].Detail -match 'keinen Wert') { $richtig++; $zeilen.Add("[richtig]      BRH ohne Zahl dahinter wird gemeldet") }
     else { $falsch++; $zeilen.Add("[FALSCH]       BRH ohne Zahl: $($b.Count) Befunde") }
 
+    # BRH an jedem Fenster (19.11.): Fenster aus "Breite / Höhe" an der Außenwand, jedes braucht eine BRH auf seiner Seite
+    $linB = @(Get-PdfLinienCached $werkOk.FullName)
+    $f = @(Get-A10FensterOhneBrh $itemsB $linB)
+    if ($f.Count -eq 1 -and $f[0].Ok -and $f[0].Wert -match '^11 von 11') { $richtig++; $zeilen.Add("[richtig]      Musterplan: 11 Fenster (Höhe unter 2 m), alle mit BRH") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Musterplan Fenster: $(($f | ForEach-Object { "$($_.Angabe)=$($_.Wert)" }) -join '; ')") }
+    # BRH am Fenster rechts oben (HWR) samt Wert entfernen: genau ein Befund an diesem Fenster
+    $brhRechts = $brhB | Sort-Object X -Descending | Select-Object -First 1
+    $wertR = $itemsB | Where-Object { $_ -ne $brhRechts -and $_.T -match $script:BrhWert -and (([math]::Abs($_.Y - $brhRechts.Y) -le 2.5 -and $_.X -gt $brhRechts.X -and ($_.X - $brhRechts.X) -le 45) -or ([math]::Abs($_.X - $brhRechts.X) -le 2 -and ($brhRechts.Y - $_.Y) -ge 15 -and ($brhRechts.Y - $_.Y) -le 26)) } | Select-Object -First 1
+    $ohneR = @($itemsB | Where-Object { $_ -ne $brhRechts -and $_ -ne $wertR })
+    $f = @(Get-A10FensterOhneBrh $ohneR $linB | Where-Object { -not $_.Ok })
+    if ($f.Count -eq 1 -and $f[0].Angabe -match 'rechts' -and [math]::Abs($f[0].Y - $brhRechts.Y) -le 30) { $richtig++; $zeilen.Add("[richtig]      BRH an einem Fenster entfernt: genau ein Befund am Fenster rechts") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       BRH entfernt: $($f.Count) Befunde ($(($f | ForEach-Object { "$($_.Angabe) @ $([math]::Round($_.X)),$([math]::Round($_.Y))" }) -join '; '))") }
+    # Eine Innentür mit "88 / 2,01" und ein Maß mitten im Raum mit "2,51 / 1,30" sind keine Fenster an der Außenwand
+    $mitte = @($itemsB) + @([pscustomobject]@{ X = 690; Y = 560; T = '2,51' }, [pscustomobject]@{ X = 690; Y = 570; T = '1,30' })
+    $f = @(Get-A10FensterOhneBrh $mitte $linB | Where-Object { -not $_.Ok })
+    if ($f.Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      Maß 'Breite / Höhe' mitten im Gebäude zählt nicht als Fenster") }
+    else { $falsch++; $zeilen.Add("[FALSCH]       Maß mitten im Gebäude: $($f.Count) Befunde") }
+
     if (@(Get-AktivePruefungen 'entwurf' | Where-Object { $_ -like 'A10*' }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      A10 läuft nur in der Werkplanung") }
     else { $falsch++; $zeilen.Add("[FALSCH]       A10 ist auch im Entwurf aktiv") }
 }
@@ -734,7 +752,7 @@ if ($okPlan -and @($script:Pruefungen | Where-Object { $_.Id -eq 'A3K' }).Count 
     $script:TestKiAn = $false
     $res = @(Invoke-Pruefungen $okPlan.FullName 'entwurf' $true)
     $m = @(Get-Meldungen)
-    if ($script:TestKiAufrufe -eq 0 -and $m.Count -eq $anzahlKi -and $m[0] -match 'kein KI-Schlüssel' -and @($res | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      ohne Schlüssel: keine KI-Anfrage, eine verständliche Meldung") }
+    if ($script:TestKiAufrufe -eq 0 -and $m.Count -eq $anzahlKi -and $m[0] -match 'fehlt ein KI-Schlüssel' -and $m[0] -match 'eigenen Gemini-Schlüssel' -and @($res | Where-Object { -not $_.Ok }).Count -eq 0) { $richtig++; $zeilen.Add("[richtig]      ohne Schlüssel: keine KI-Anfrage, eine verständliche Meldung") }
     else { $falsch++; $zeilen.Add("[FALSCH]       ohne Schlüssel: Aufrufe=$($script:TestKiAufrufe), Meldungen=$($m.Count)") }
 
     # 4. KI nicht eingeschaltet: es wird keine Anfrage gestellt (Datenschutz)

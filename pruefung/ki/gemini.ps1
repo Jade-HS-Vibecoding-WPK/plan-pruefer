@@ -51,9 +51,44 @@ function Get-KiEinstellung([string]$Name) {
     return $null
 }
 
+# Eigener Schlüssel einer Nutzerin (aus der Seite, nur für die laufende Anfrage). Der Server setzt ihn vor der Prüfung
+# und löscht ihn danach wieder. Er wird nie gespeichert, nie angezeigt und nie ins Protokoll geschrieben.
+$script:KiSchluesselAnfrage = $null
+
+# Web-App (server.ps1): NUR der eigene Schlüssel der Nutzerin zählt. schluessel.txt/.env und GEMINI_API_KEY werden dann
+# nie benutzt, damit nach der Veröffentlichung niemand über die App den Schlüssel des Teams verbraucht.
+# (Nur Skripte ohne Server, zum Beispiel eigene Versuche, können noch die Datei verwenden.)
+$script:KiNurEigenerSchluessel = $false
+
+# Sieht der Text wie ein Schlüssel aus? Google-Schlüssel gibt es in zwei Formen: die ältere "AIza..." (39 Zeichen) und
+# eine neuere mit Punkt (zum Beispiel 53 Zeichen). Erlaubt: Buchstaben, Ziffern, Punkt, - und _, 30 bis 120 Zeichen.
+function Test-KiSchluesselForm([string]$k) { return ($k -match '^[A-Za-z0-9_.\-]{30,120}$') }
+
 function Get-KiSchluessel {
+    if ($script:KiSchluesselAnfrage) { return $script:KiSchluesselAnfrage }
+    if ($script:KiNurEigenerSchluessel) { return $null }
     if ($env:GEMINI_API_KEY) { return $env:GEMINI_API_KEY.Trim() }
     return (Get-KiEinstellung 'schluessel')
+}
+
+# Prüft einen Schlüssel, ohne einen Plan zu senden: fragt nur die Liste der Modelle ab.
+# Liefert @{ ok = $true } oder @{ ok = $false; fehler = '...' } (ohne den Schlüssel im Text).
+function Test-KiSchluessel([string]$k) {
+    if (-not (Test-KiSchluesselForm $k)) { return @{ ok = $false; fehler = 'Das sieht nicht wie ein Google-Gemini-Schlüssel aus (erlaubt sind Buchstaben, Ziffern, Punkt, - und _, ohne Leerzeichen und ohne "GEMINI_API_KEY=" davor).' } }
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    try {
+        $null = Invoke-RestMethod -Uri "$script:KiBasis/models?pageSize=1" -Method Get -Headers @{ 'x-goog-api-key' = $k } -TimeoutSec 20
+        return @{ ok = $true }
+    } catch {
+        $code = $null; if ($_.Exception.Response) { $code = [int]$_.Exception.Response.StatusCode }
+        $text = switch ($code) {
+            { $_ -in 400, 401, 403 } { 'Google hat den Schlüssel abgelehnt. Bitte in Google AI Studio prüfen, ob er stimmt und aktiv ist.' }
+            429 { 'Der Schlüssel ist gültig, aber das kostenlose Limit ist gerade erreicht. Später noch einmal versuchen.' }
+            $null { 'Google ist nicht erreichbar (kein Internet?).' }
+            default { "Die Prüfung des Schlüssels ist fehlgeschlagen (Fehler $code)." }
+        }
+        return @{ ok = ($code -eq 429); fehler = $text }
+    }
 }
 
 function Get-KiModell {
@@ -176,10 +211,11 @@ function Invoke-KiPdfFrage([string]$PdfPfad, [string]$Frage, $Schema, [string]$D
             }
         }
     }
+    $wo = if ($script:KiSchluesselAnfrage -or $script:KiNurEigenerSchluessel) { 'den auf der Startseite eingegebenen Schlüssel prüfen (Knopf "Prüfen")' } else { 'schluessel.txt prüfen' }
     if ($letzterFehler.Code -in 500, 503) { throw 'Der KI-Dienst ist gerade überlastet. Bitte in ein paar Minuten noch einmal versuchen.' }
-    if ($letzterFehler.Text -match 'API key') { throw 'Die KI hat den Schlüssel abgelehnt (ungültig). Bitte schluessel.txt prüfen und einen gültigen Schlüssel aus Google AI Studio eintragen.' }
+    if ($letzterFehler.Text -match 'API key') { throw "Die KI hat den Schlüssel abgelehnt (ungültig). Bitte $wo und einen gültigen Schlüssel aus Google AI Studio verwenden." }
     switch ($letzterFehler.Code) {
-        { $_ -in 401, 403 } { throw "Die KI hat den Schlüssel abgelehnt. Bitte schluessel.txt prüfen. ($($letzterFehler.Text))" }
+        { $_ -in 401, 403 } { throw "Die KI hat den Schlüssel abgelehnt. Bitte $wo. ($($letzterFehler.Text))" }
         429 { throw 'Das kostenlose KI-Limit ist erreicht. Bitte in ein paar Minuten noch einmal versuchen.' }
         default { throw "Die KI-Anfrage ist fehlgeschlagen. $($letzterFehler.Text)" }
     }

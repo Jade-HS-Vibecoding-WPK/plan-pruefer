@@ -16,6 +16,10 @@ if ($script:MitRaumprogramm) { . "$PSScriptRoot\raumprogramm.ps1" }
 $script:MitGrz = $script:MitRaumprogramm -and (Test-Path "$PSScriptRoot\grz.ps1")
 if ($script:MitGrz) { . "$PSScriptRoot\grz.ps1" }
 
+# KI in der Web-App nur mit dem eigenen Schlüssel der Nutzerin (aus der Seite). Ein Schlüssel in schluessel.txt/.env
+# oder GEMINI_API_KEY wird über die App nie benutzt (sonst könnten nach der Veröffentlichung alle den des Teams verbrauchen).
+$script:KiNurEigenerSchluessel = $true
+
 $webOrdner = Join-Path $PSScriptRoot 'web'
 $tempOrdner = Join-Path ([System.IO.Path]::GetTempPath()) 'planpruefer'
 New-Item -ItemType Directory -Force $tempOrdner | Out-Null
@@ -103,6 +107,9 @@ try {
                         continue
                     }
                     $mitKi = ([string]$req.Headers['X-Ki']).ToLowerInvariant() -eq 'ja'
+                    # Eigener Gemini-Schlüssel aus der Seite (externe Nutzer): gilt nur für diese Prüfung, wird nie gespeichert oder ausgegeben
+                    $eigenerKey = ([string]$req.Headers['X-Ki-Schluessel']).Trim()
+                    $script:KiSchluesselAnfrage = if ($mitKi -and (Test-KiSchluesselForm $eigenerKey)) { $eigenerKey } else { $null }
                     $bildPfad = ''
                     $bildNr = [string]$req.Headers['X-Bild']
                     if ($bildNr -match '^[0-9a-f]{32}$' -and (Test-Path (Join-Path $tempOrdner "$bildNr.png"))) { $bildPfad = Join-Path $tempOrdner "$bildNr.png" }
@@ -114,9 +121,17 @@ try {
                     Write-Host ("{0}  {1} ({2}{3})  ->  {4} Befund(e)" -f (Get-Date -Format 'HH:mm:ss'), $name, $phase, $(if ($mitKi) { ', mit KI' } else { '' }), @($res | Where-Object { -not $_.Ok }).Count)
                     Send-Json $ctx @{ datei = $name; phase = $phase; mitKi = $mitKi; befunde = $befunde; aktiv = @(Get-AktivePruefungen $phase $mitKi); meldungen = $meldungen }
                 } finally {
+                    $script:KiSchluesselAnfrage = $null
                     if (Test-Path $tmp) { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
                     if ($bildPfad -and (Test-Path $bildPfad)) { Remove-Item $bildPfad -Force -ErrorAction SilentlyContinue }
                 }
+            }
+            elseif ($req.HttpMethod -eq 'POST' -and $path -eq '/ki-test') {
+                # Eigenen Gemini-Schlüssel prüfen (sendet keinen Plan, nur eine Abfrage der Modellliste an Google).
+                # Der Schlüssel kommt im Kopf X-Ki-Schluessel (nicht in der Adresse) und wird nicht protokolliert.
+                $r = Test-KiSchluessel ([string]$req.Headers['X-Ki-Schluessel']).Trim()
+                Write-Host ("{0}  KI-Schlüssel geprüft: {1}" -f (Get-Date -Format 'HH:mm:ss'), $(if ($r.ok) { 'gültig' } else { 'nicht gültig' }))
+                Send-Json $ctx $r
             }
             elseif ($req.HttpMethod -eq 'GET' -and ($path -eq '/raumprogramm.js' -or $path -eq '/raumprogramm.css' -or $path -eq '/grz.js' -or $path -eq '/grz.css')) {
                 # Add-on Raumprogramm: Seite und Aussehen (fehlen die Dateien, gibt es 404 und die Seite läuft ohne Add-on)

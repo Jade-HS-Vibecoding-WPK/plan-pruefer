@@ -56,6 +56,23 @@
   .ki:has(input:checked) .schalter::after { transform: translateX(24px); background: var(--grund); }
   .ki:has(input:focus-visible) .schalter { outline: 3px solid var(--weiss); outline-offset: 2px; }
   .ki.aus { opacity: .55; cursor: not-allowed; }
+  /* Eigener Gemini-Schlüssel */
+  .ki-schluessel { display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
+  .ki-schluessel .leise { color: var(--leise); font-size: 13px; margin-left: 6px; }
+  .ki-schluessel small.leise { margin-left: 0; line-height: 1.5; }
+  .ki-schluessel a { color: var(--weiss); }
+  .ki-schluessel-zeile { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ki-schluessel-zeile input { flex: 1 1 240px; min-width: 0; font: inherit; font-size: 16px; color: var(--weiss); background: var(--grund); border: 1px solid var(--linie); border-radius: 12px; padding: 10px 12px; letter-spacing: .02em; }
+  .ki-schluessel-zeile input:focus { outline: 2px solid var(--akzent); outline-offset: 1px; }
+  .ki-knopf { border: 0; border-radius: 999px; background: var(--weiss); color: var(--grund); font-weight: 700; padding: 10px 18px; cursor: pointer; }
+  .ki-knopf.hell { background: transparent; color: var(--akzent); border: 1px solid var(--akzent); font-weight: 600; }
+  .ki-knopf:disabled { opacity: .5; cursor: wait; }
+  .ki-merken { display: flex; gap: 8px; align-items: center; color: var(--akzent); cursor: pointer; }
+  .ki-merken input { width: 18px; height: 18px; accent-color: #FFFFFF; }
+  .ki-schluessel-status:empty { display: none; }
+  .ki-schluessel-status { border-radius: 12px; padding: 8px 12px; border: 1px dashed var(--akzent); color: var(--akzent); }
+  .ki-schluessel-status.gut { border: 1.5px solid var(--weiss); color: var(--weiss); }
+  .ki-schluessel-status.schlecht { border-color: #b06a8a; background: #3a2340; color: var(--weiss); }
 
   /* PDF ablegen */
   .ablage { position: relative; min-height: 230px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px;
@@ -80,7 +97,6 @@
   .start svg.ring circle { fill: none; stroke-width: 5; }
   .start svg.ring .spur { stroke: rgba(167, 182, 208, .25); }
   .start svg.ring .fortschritt { stroke: var(--weiss); stroke-linecap: round; transition: stroke-dashoffset .25s linear; }
-  .start .zeit { position: absolute; right: calc(100% + 18px); top: 50%; transform: translateY(-50%); white-space: nowrap; font-size: 13px; font-weight: 600; color: var(--weiss); font-variant-numeric: tabular-nums; }
   .start.laeuft { background: var(--weiss); opacity: 1; }
   @keyframes suchen { 0%, 100% { transform: translate(-3px, 0) rotate(-8deg); } 50% { transform: translate(3px, -2px) rotate(8deg); } }
   .status { grid-column: 1 / -1; color: var(--akzent); text-align: center; min-height: 24px; }
@@ -274,6 +290,19 @@
       <span><span class="titel">KI</span> <small id="kiText">Zusätzlich mit KI prüfen (Google Gemini). Dafür wird der Plan an Google gesendet. Nur eigene, unkritische Pläne verwenden, KI-Funde sind Hinweise.</small></span>
     </label>
 
+    <!-- Eigener Gemini-Schlüssel (Pflicht für die KI). Geht nur mit der Prüfung an den Server hier und von dort an Google. -->
+    <div class="kachel breit ki-schluessel versteckt" id="kiSchluesselBox">
+      <div><b>Eigener Gemini-Schlüssel</b> <span class="leise" id="kiSchluesselHinweis"></span></div>
+      <div class="ki-schluessel-zeile">
+        <input type="password" id="kiSchluessel" autocomplete="off" spellcheck="false" placeholder="AIza…" aria-label="Eigener Google-Gemini-Schlüssel">
+        <button type="button" class="ki-knopf hell" id="kiSchluesselZeigen" aria-pressed="false">Zeigen</button>
+        <button type="button" class="ki-knopf" id="kiSchluesselPruefen">Prüfen</button>
+      </div>
+      <label class="ki-merken"><input type="checkbox" id="kiSchluesselMerken"> In diesem Browser merken (nicht auf fremden oder gemeinsam genutzten Rechnern)</label>
+      <div class="ki-schluessel-status" id="kiSchluesselStatus" aria-live="polite"></div>
+      <small class="leise">Einen Schlüssel bekommst du kostenlos unter <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com/apikey</a>. Er geht nur an diesen Planprüfer und von dort an Google. Gespeichert wird er nicht, außer du hakst „merken“ an, dann nur in diesem Browser.</small>
+    </div>
+
     <div class="kachel ablage breit gesperrt" id="ablage" role="button" tabindex="0" aria-label="PDF auswählen">
       <input type="file" id="datei" accept="application/pdf,.pdf" multiple>
       <div class="gross">PDF</div>
@@ -282,7 +311,6 @@
       <button class="start" id="start" type="button" disabled title="Prüfung starten" aria-label="Prüfung starten">
         <svg class="lupe" viewBox="0 0 32 32" aria-hidden="true"><circle cx="13" cy="13" r="8.5" fill="none" stroke="currentColor" stroke-width="3.5"/><path d="M19.5 19.5 L27 27" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg>
         <svg class="ring" viewBox="0 0 82 82" aria-hidden="true"><circle class="spur" cx="41" cy="41" r="37"/><circle class="fortschritt" id="ringFortschritt" cx="41" cy="41" r="37"/></svg>
-        <span class="zeit" id="zeit" aria-live="off"></span>
       </button>
     </div>
 
@@ -358,9 +386,44 @@
   // Die Phase wird bewusst nicht gemerkt: bei jedem Besuch wird neu gefragt.
   radios.forEach(r => { r.checked = false; r.addEventListener('change', aktualisiere); });
   kiAn.checked = false;
-  fetch('/status').then(r => r.json()).then(s => {
-    if (!s.ki) { kiAn.disabled = true; kiBox.classList.add('aus'); kiText.textContent = 'Noch nicht eingerichtet: Es ist kein KI-Schlüssel hinterlegt (siehe README, Abschnitt „KI-Prüfung einrichten“).'; }
-  }).catch(() => { });
+
+  // ---------- KI-Schlüssel: auf diesem Rechner eingerichtet (schluessel.env) oder eigener Schlüssel aus dem Feld ----------
+  const KI_TEXT = kiText.textContent;
+  const kiFeld = $('kiSchluessel'), kiMerken = $('kiSchluesselMerken'), kiStatusS = $('kiSchluesselStatus');
+  const KI_MERK = 'planpruefer.kiSchluessel';
+  // Die KI läuft nur mit dem eigenen Schlüssel der Nutzerin. Ein Schlüssel auf dem Rechner wird von der App nie benutzt.
+  try { const g = localStorage.getItem(KI_MERK); if (g) { kiFeld.value = g; kiMerken.checked = true; } } catch (e) { }
+  // Google-Schlüssel: ältere Form "AIza..." oder neuere mit Punkt. Erlaubt: Buchstaben, Ziffern, Punkt, - und _
+  function eigenerSchluessel() { const k = kiFeld.value.trim().replace(/^GEMINI_API_KEY\s*=\s*/i, '').replace(/^["']|["']$/g, ''); return /^[A-Za-z0-9_.\-]{30,120}$/.test(k) ? k : ''; }
+  function merkeSchluessel() {
+    try { if (kiMerken.checked && eigenerSchluessel()) localStorage.setItem(KI_MERK, eigenerSchluessel()); else localStorage.removeItem(KI_MERK); } catch (e) { }
+  }
+  // Das Schlüsselfeld erscheint erst, wenn die KI eingeschaltet ist. Ohne Schlüssel startet die Prüfung mit KI nicht.
+  function aktualisiereKi() {
+    kiAn.disabled = false; kiBox.classList.remove('aus');
+    kiText.textContent = KI_TEXT;
+    $('kiSchluesselBox').classList.toggle('versteckt', !kiAn.checked);
+    $('kiSchluesselHinweis').textContent = 'Die KI-Prüfung braucht deinen eigenen, kostenlosen Schlüssel von Google AI Studio.';
+  }
+  kiFeld.addEventListener('input', () => { kiStatusS.textContent = ''; kiStatusS.className = 'ki-schluessel-status'; merkeSchluessel(); aktualisiereKi(); });
+  kiMerken.addEventListener('change', merkeSchluessel);
+  kiAn.addEventListener('change', aktualisiereKi);
+  $('kiSchluesselZeigen').addEventListener('click', ev => { const an = kiFeld.type === 'password'; kiFeld.type = an ? 'text' : 'password'; ev.currentTarget.textContent = an ? 'Verbergen' : 'Zeigen'; ev.currentTarget.setAttribute('aria-pressed', an ? 'true' : 'false'); });
+  $('kiSchluesselPruefen').addEventListener('click', async ev => {
+    const knopf = ev.currentTarget, roh = kiFeld.value.trim(), k = eigenerSchluessel();
+    kiStatusS.className = 'ki-schluessel-status';
+    if (!k) { kiStatusS.textContent = roh ? 'Das sieht nicht wie ein Google-Gemini-Schlüssel aus (erlaubt sind Buchstaben, Ziffern, Punkt, - und _, ohne Leerzeichen).' : 'Bitte zuerst einen Schlüssel eintragen.'; kiStatusS.classList.add('schlecht'); return; }
+    knopf.disabled = true; kiStatusS.textContent = 'Frage bei Google nach … (es wird kein Plan gesendet)';
+    try {
+      const r = await fetch('/ki-test', { method: 'POST', headers: { 'X-Ki-Schluessel': k } });
+      const d = await r.json();
+      if (!r.ok && r.status === 404) throw new Error('Der Server kennt die Prüfung noch nicht. Bitte Planpruefer-starten.cmd neu starten.');
+      kiStatusS.textContent = d.ok ? (d.fehler ? '✓ ' + d.fehler : '✓ Der Schlüssel funktioniert. Die KI-Prüfung ist jetzt möglich.') : d.fehler;
+      kiStatusS.classList.add(d.ok ? 'gut' : 'schlecht');
+    } catch (e) { kiStatusS.textContent = e instanceof TypeError ? 'Der Planprüfer-Server ist nicht erreichbar.' : e.message; kiStatusS.classList.add('schlecht'); }
+    finally { knopf.disabled = false; }
+  });
+  aktualisiereKi();
 
   function fuegeHinzu(liste) {
     if (!aktuellePhase()) { zeigeStatus('Bitte zuerst die Planungsphase wählen: Werkplanung oder Entwurf.', true); return; }
@@ -450,8 +513,6 @@
       let anteil = vergangen / st.gesamt;
       if (anteil > 0.95) anteil = 0.95 + 0.04 * (1 - Math.exp(-(vergangen - 0.95 * st.gesamt) / Math.max(5, 0.3 * st.gesamt)));
       setzeRing(anteil);
-      const rest = st.gesamt - vergangen;
-      $('zeit').textContent = `ca. ${uhr(Math.max(1, rest))}`;
     };
     tick();
     st.timer = setInterval(tick, 250);
@@ -461,14 +522,18 @@
   function stoppeFortschritt() {
     if (!fortschritt) return;
     clearInterval(fortschritt.timer); setzeRing(1);
-    $('zeit').textContent = '';
     fortschritt = null;
-    setTimeout(() => { if (!fortschritt) { setzeRing(0); $('zeit').textContent = ''; } }, 2500);
+    setTimeout(() => { if (!fortschritt) setzeRing(0); }, 2500);
   }
 
   async function pruefeAlle() {
     const phase = aktuellePhase();
     if (!phase || gewaehlt.length === 0 || laeuft) return;
+    if (kiAn.checked && !eigenerSchluessel()) {
+      zeigeStatus('Für die KI-Prüfung bitte deinen eigenen Gemini-Schlüssel eintragen, oder die KI ausschalten.', true);
+      $('kiSchluesselBox').scrollIntoView({ behavior: 'smooth', block: 'center' }); kiFeld.focus();
+      return;
+    }
     laeuft = true; start.classList.add('laeuft'); aktualisiere();
     const neu = [];
     const schaetzungen = gewaehlt.map(f => schaetze(f, kiAn.checked));
@@ -481,7 +546,9 @@
         const mitKi = kiAn.checked;
         let bildId = '', bildFehler = '';
         if (mitKi) { try { bildId = await erzeugeBild(f); } catch (e) { bildFehler = e.message; } }
-        const r = await fetch('/pruefen', { method: 'POST', headers: { 'X-Dateiname': encodeURIComponent(f.name), 'X-Phase': phase, 'X-Ki': (mitKi ? 'ja' : 'nein'), 'X-Bild': bildId }, body: f });
+        const kopf = { 'X-Dateiname': encodeURIComponent(f.name), 'X-Phase': phase, 'X-Ki': (mitKi ? 'ja' : 'nein'), 'X-Bild': bildId };
+        if (mitKi && eigenerSchluessel()) kopf['X-Ki-Schluessel'] = eigenerSchluessel();   // eigener Schlüssel nur bei eingeschalteter KI
+        const r = await fetch('/pruefen', { method: 'POST', headers: kopf, body: f });
         const daten = await r.json();
         if (!r.ok) throw new Error(daten.fehler || 'Unbekannter Fehler');
         if (bildFehler) (daten.meldungen = daten.meldungen || []).push('Das Bild für die KI konnte nicht erzeugt werden (' + bildFehler + '). Die KI hat stattdessen das PDF benutzt, das ist ungenauer.');

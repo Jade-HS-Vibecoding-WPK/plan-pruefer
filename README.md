@@ -44,12 +44,18 @@ Doppelklick auf `Planpruefer-starten.cmd`. Das Fenster offen lassen, der Browser
 
 Manche Prüfungen, zum Beispiel "Raum ohne Name und Fläche", macht eine KI (Google Gemini). Sie ist standardmäßig **aus** und muss bei jedem Upload ausdrücklich eingeschaltet werden.
 
-1. Auf [Google AI Studio](https://aistudio.google.com/apikey) mit einem Google-Konto einen kostenlosen API-Schlüssel erstellen.
-2. Die Datei `schluessel.beispiel.txt` kopieren, die Kopie `schluessel.txt` nennen und den Schlüssel einfügen. Die App liest auch eine Datei `schluessel.env` oder `.env`. Erlaubt ist nur der Schlüssel in einer Zeile oder die Schreibweise `GEMINI_API_KEY=...`. Der Platzhalter `HIER-DEN-SCHLUESSEL-EINFUEGEN` zählt nicht. Alle diese Dateien stehen in der `.gitignore`.
-3. App neu starten. Auf der Seite ist die KI-Option dann wählbar.
+**Jede Nutzerin, jeder Nutzer braucht einen eigenen Schlüssel.** Die App benutzt nie einen Schlüssel, der auf dem Rechner liegt (`schluessel.txt`, `schluessel.env`, `.env` oder `GEMINI_API_KEY`). So kann nach der Veröffentlichung niemand den Schlüssel des Teams verbrauchen.
 
+1. Auf [Google AI Studio](https://aistudio.google.com/apikey) mit einem Google-Konto einen kostenlosen API-Schlüssel erstellen.
+2. Auf der Startseite die KI einschalten. Darunter erscheint das Feld "Eigener Gemini-Schlüssel": den Schlüssel einfügen und mit "Prüfen" testen. Dabei geht nur der Schlüssel an Google, kein Plan.
+3. Prüfung starten. Ist die KI an, aber kein Schlüssel eingetragen, startet die Prüfung nicht und die Seite zeigt auf das Feld.
+
+So geht der Schlüssel mit:
+- Er geht nur bei eingeschalteter KI und nur mit der jeweiligen Prüfung an den Planprüfer-Server und von dort an Google. Der Server speichert ihn nicht und schreibt ihn in kein Protokoll. Er gilt nur für diese eine Prüfung.
+- "In diesem Browser merken" ist standardmäßig aus. Angehakt liegt der Schlüssel im Speicher dieses Browsers (localStorage), bis der Haken wieder entfernt wird. Auf fremden oder gemeinsam genutzten Rechnern nicht anhaken.
+- Eine Datei `schluessel.txt` oder `schluessel.env` im Projektordner wird von der App nicht mehr gelesen. Sie kann gelöscht werden.
 Wichtig:
-- `schluessel.txt` wird nie auf GitHub hochgeladen. Den Schlüssel nicht weitergeben.
+- Den eigenen Schlüssel nicht weitergeben. Schlüsseldateien (`schluessel.txt`, `.env`) stehen weiterhin in der `.gitignore` und werden nie hochgeladen.
 - Bei eingeschalteter KI wird der Plan an Google gesendet. Im kostenlosen Zugang darf Google die Eingaben zur Verbesserung seiner Produkte nutzen. Deshalb nur eigene, unkritische Pläne verwenden.
 - KI-Funde sind **Hinweise** und müssen von einem Menschen geprüft werden. Bei eingeschalteter KI erzeugt die Seite ein Bild der Planseite und lädt dafür die Bibliothek pdf.js von cdnjs.cloudflare.com (Internet nötig). Die KI-Prüfungen sind **experimentell**: Sie können Fehler übersehen oder falsch melden und brauchen mit dem stärkeren Modell bis zu eine Minute pro Plan.
 - Der kostenlose Zugang hat Mengenlimits. Ist das Limit erreicht, zeigt die App eine Meldung, und die normalen Prüfungen laufen weiter.
