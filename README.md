@@ -1,3 +1,5 @@
+<p align="center"><img src="pruefung/web/icon.svg" alt="App-Icon des Planprüfers: weißes Notizblatt mit zwei Haken und eine Lupe auf dunkelblauem Grund" width="128"></p>
+
 # plan-pruefer
 
 **Der Planprüfer prüft Grundrisse aus ArchiCAD (PDF) auf die zeichnerischen Pflichtinhalte, markiert fehlende Angaben direkt im Plan und vergleicht den Entwurf mit Raumprogramm und GRZ.**

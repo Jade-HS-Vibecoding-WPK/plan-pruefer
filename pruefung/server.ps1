@@ -133,6 +133,12 @@ try {
                 Write-Host ("{0}  KI-Schlüssel geprüft: {1}" -f (Get-Date -Format 'HH:mm:ss'), $(if ($r.ok) { 'gültig' } else { 'nicht gültig' }))
                 Send-Json $ctx $r
             }
+            elseif ($req.HttpMethod -eq 'GET' -and $path -in '/icon.svg', '/icon-32.png', '/icon-180.png', '/icon-512.png') {
+                # App-Icon (Browser-Tab, Lesezeichen, Startbildschirm)
+                $datei = Join-Path $webOrdner ($path.TrimStart('/'))
+                if (Test-Path $datei) { Send-Bytes $ctx ([System.IO.File]::ReadAllBytes($datei)) $(if ($path -like '*.svg') { 'image/svg+xml' } else { 'image/png' }) }
+                else { Send-Bytes $ctx ([System.Text.Encoding]::UTF8.GetBytes('Nicht gefunden')) 'text/plain; charset=utf-8' 404 }
+            }
             elseif ($req.HttpMethod -eq 'GET' -and ($path -eq '/raumprogramm.js' -or $path -eq '/raumprogramm.css' -or $path -eq '/grz.js' -or $path -eq '/grz.css')) {
                 # Add-on Raumprogramm: Seite und Aussehen (fehlen die Dateien, gibt es 404 und die Seite läuft ohne Add-on)
                 $datei = Join-Path $webOrdner ($path.TrimStart('/'))

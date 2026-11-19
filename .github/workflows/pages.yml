@@ -39,7 +39,7 @@ jobs:
         run: |
           set -e
           mkdir -p _site/demo
-          cp pruefung/web/index.html pruefung/web/*.js pruefung/web/*.css _site/
+          cp pruefung/web/index.html pruefung/web/*.js pruefung/web/*.css pruefung/web/icon* _site/
           cp demo/demo.js demo/antworten.json _site/demo/
           cp "Testordner/Bespiel Grundriss Werkplanung.pdf" _site/demo/werkplan-mit-fehler.pdf
           cp "Testordner/01 Grundriss EG.pdf" _site/demo/grundriss-eg.pdf

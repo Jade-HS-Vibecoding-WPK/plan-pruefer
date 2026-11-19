@@ -340,3 +340,8 @@ Auf Wunsch des Teams: Die gesamte App läuft jetzt auch auf dem Handy (bis 640 p
 
 - Der von Hand angelegte Tag wurde von GitHub Desktop nicht mitgeschickt. Darum legt jetzt der Ablauf .github/workflows/release.yml Tag und Release selbst an: Er läuft, wenn die Datei VERSION auf main gepusht wird, und erzeugt Tag <VERSION> und die Release "Planprüfer <VERSION>" mit dem Text aus docs/release-notes.md. Gibt es die Release schon, passiert nichts.
 - **Neue Version später:** Zahl in VERSION erhöhen (zum Beispiel 1.1.0), docs/release-notes.md anpassen, committen und pushen.
+
+## App-Icon (Donnerstag 19.11.)
+
+- Das Zeichen der App (weißes Notizblatt mit zwei Haken, Lupe, Teamfarben) ist jetzt das App-Icon: pruefung/web/icon.svg (Browser-Tab, scharf in jeder Größe), icon-32.png (Ersatz für Browser ohne SVG-Icon), icon-180.png (Startbildschirm iPhone/iPad), icon-512.png (Android, Lesezeichen). Eingebunden im Kopf von index.html, ausgeliefert vom lokalen Server (server.ps1) und in der Online-Demo (pages.yml kopiert icon*).
+- In der README steht das Icon oben mittig (pruefung/web/icon.svg).
