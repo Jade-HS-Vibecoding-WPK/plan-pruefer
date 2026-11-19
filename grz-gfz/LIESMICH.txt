@@ -1,4 +1,5 @@
-﻿In diesen Ordner kommt das Dokument zur Berechnung von GRZ und GFZ (PDF oder Word).
-Danach baut Claude den Pruefer nach diesem Dokument.
+﻿Hier liegt die Arbeitshilfe zur Berechnung von GRZ und GFZ (Arbeitshilfe_GRZ_GFZ.pdf).
+Nach ihr rechnet das Add-on GRZ (pruefung\web\grz.js, Rechenkern oben in der Datei). Nur GRZ, keine Online-Abfrage.
 
 Rueckweg: Git-Markierung vor-grz-gfz = Stand ohne dieses Feature.
+Abschalten: in pruefung\web\index.html die zwei Zeilen unter Add-on GRZ/GFZ loeschen.

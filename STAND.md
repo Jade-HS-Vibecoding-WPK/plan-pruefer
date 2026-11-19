@@ -1,4 +1,4 @@
-# Stand und nächste Schritte
+﻿# Stand und nächste Schritte
 
 Stand: Ende Montag, 16.11.2026 (Tag 1 von 5). Der Zeitplan steht in [PLAN.md](PLAN.md), die Prüfpunkte in [PRUEFKATALOG.md](PRUEFKATALOG.md).
 
@@ -231,3 +231,31 @@ Weiter langsam: das Lesen der Grafik (bei PowerShell schwer schneller zu machen)
 - **KI-Funde sind Hinweise**, keine sicheren Urteile. Bei eingeschalteter KI geht der Plan an Google, nur eigene, unkritische Pläne verwenden.
 - **Grenze von A3:** Ein Raum ohne Name und ohne Fläche steht nicht im PDF-Text. Das fängt nur die KI (A3K).
 - Zeitplan: Donnerstag **12 Uhr Freeze**, danach nur noch Poster und Demo. Wenn die Zeit knapp wird, streichen wir zuerst die Markierungen im Plan (siehe PLAN.md).
+
+## Add-on GRZ-Prüfer (Experiment, Donnerstag 19.11. vormittags)
+
+**Rückweg:** Git-Markierung **`vor-grz-gfz`** (Stand ohne das Add-on, nichts war offen). Abschalten ohne Zurückspringen: in `pruefung/web/index.html` die zwei Zeilen unter "Add-on GRZ/GFZ" löschen (oder `grz.js` löschen). In `raumprogramm.js` steht eine Zeile `pp.rpPlaene = ...` und im `server.ps1` ein kleiner Anschluss (`/grz-grundriss`), die stören ohne das Add-on nicht.
+
+**Änderung vom Team (19.11.):** Nur noch **GRZ** (keine GFZ). **Keine Bindung an Oldenburg oder ein Bundesland**: Die Online-Plansuche (Nominatim, Dienst der Stadt Oldenburg) ist wieder ausgebaut, nichts geht mehr ins Internet. **GRZ I und GRZ II sind getrennt.**
+
+**Was das Add-on kann:**
+- **Taskleiste:** Punkt ③ "GRZ", auch über die Kachel "Weiter zur GRZ-Prüfung" am Ende der Raumprogramm-Ergebnisse (die Grundrisse werden mitgenommen).
+- **Eingabe von Hand:** Grundstücksgröße, GRZ, Baugebiet und die **BauNVO-Fassung per Auswahl** (1962 für Bebauungspläne bis 1967, 1968/1977 für 1968 bis 1989, 1990 ab 1990, wie in der Arbeitshilfe). Das Feld für das Jahr ist am 19.11. auf Wunsch des Teams entfernt worden.
+- **Grundrisse:** Server `/grz-grundriss` liest Geschosse, Raumflächen und bei Werkplänen mit Achsraster das Gebäuderechteck (Gesamtmaß mal Gesamtmaß). Sonst wird die Außenfläche aus den Raumflächen mal 1,20 geschätzt. Räume wie Terrasse/Balkon, Carport/Garage, Gartenhaus/Schuppen, Tiefgarage werden erkannt und getrennt aufgelistet. Alles ist änderbar, das Ergebnis rechnet sofort neu. Gebäudegrundfläche = größte oberirdische Geschossfläche.
+- **GRZ I (Hauptanlagen) und GRZ II (mit weiteren Anlagen), je mit eigener Karte:** Schild "eingehalten/überschritten", **bebaut (Ist), zulässig, noch frei** in m², Balken mit Grenzstrich (Überschreitung schraffiert), ein Satz zum Ist-Zustand ("noch 29,48 m² frei, 4,9 % des Grundstücks") und ein eigenes 10x10-Raster des Grundstücks.
+- **Regeln nach der Arbeitshilfe** (Ordner `grz-gfz/`, Frankfurt, Stand 2014, BauNVO-Auslegung):
+  - **1962:** GRZ I = Gebäude plus Terrassen und Balkone. GRZ II = zusätzlich Garagen, aber nur wenn sie über 1/10 des Grundstücks liegen (dann ganz). Grenze gleich der GRZ.
+  - **1968/77:** GRZ I = nur Gebäude. GRZ II = zusätzlich Garagen, Grenze GRZ plus 1/10 des Grundstücks (§ 21a).
+  - **1990:** GRZ I = Gebäude plus Terrassen und Balkone. GRZ II = zusätzlich Garagen, Zufahrten, Nebenanlagen, Tiefgarage, abzüglich Überlagerung, Grenze GRZ mal 1,5, höchstens 0,8.
+  - Kern-, Gewerbe- und Industriegebiet: Garagen ohne Anrechnung (1962 und 1968/77).
+- **"So wurde gerechnet"** nennt je Posten die Regel.
+- **Dateien:** `pruefung/grz.ps1`, `pruefung/web/grz.js`, `pruefung/web/grz.css`; Anschluss in `server.ps1` (`/grz-grundriss`) und `index.html`.
+
+**Getestet:** Die **Berechnungsbeispiele der Arbeitshilfe** (Grundstück 1.000 m²) stimmen genau: 1962 GRZ 0,55, 1968/77 GRZ 0,50, 1990 GRZ I 0,55 und GRZ II 0,75. Dazu Grenzfälle (Garagen genau 1/10 und darüber, Kerngebiet, Kappung 0,8). Im Browser: Musterentwurf mit Carport und Gartenhaus (GRZ I 0,351 bei 600 m², GRZ II 0,433), Jahr 1950/1968/1998, Entfernen der Online-Suche (`/grz-plan` gibt 404).
+
+**Grenzen:**
+- Die **Außenmaße sind Schätzungen** (Raumflächen mal 1,20 oder Gebäuderechteck, bei L-Form zu groß). Zufahrten, Wege und Tiefgarage stehen nicht im Grundriss und kommen von Hand.
+- Festsetzungen im Bebauungsplan können abweichen, die App ersetzt keine Prüfung der Bauaufsicht. Landesrecht (zum Beispiel Bauwich) ist nicht eingerechnet.
+- Garagen über 1/10 (BauNVO 1962): Wortlaut der Arbeitshilfe "unberücksichtigt, wenn sie ein Zehntel nicht überschreiten", darüber zählen sie ganz (Hinweis in der App).
+- Kein automatischer Testlauf für den Rechenkern (er läuft im Browser). Bei Änderungen im Browser mit `window.grzRechnen` nachrechnen.
+- Server auf 8080 muss neu gestartet werden, damit das Add-on dort läuft (`Planpruefer-starten.cmd`).
