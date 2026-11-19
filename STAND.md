@@ -259,3 +259,43 @@ Weiter langsam: das Lesen der Grafik (bei PowerShell schwer schneller zu machen)
 - Garagen über 1/10 (BauNVO 1962): Wortlaut der Arbeitshilfe "unberücksichtigt, wenn sie ein Zehntel nicht überschreiten", darüber zählen sie ganz (Hinweis in der App).
 - Kein automatischer Testlauf für den Rechenkern (er läuft im Browser). Bei Änderungen im Browser mit `window.grzRechnen` nachrechnen.
 - Server auf 8080 muss neu gestartet werden, damit das Add-on dort läuft (`Planpruefer-starten.cmd`).
+### GRZ-Prüfer: vier Ergänzungen (19.11., nach dem Tag `grz-stand-ohne-extras`)
+
+**Rückweg:** Git-Markierung `grz-stand-ohne-extras` (Stand davor). Wunsch des Teams: für Studierende, auch im Büro nutzbar, sachlich mit Spaß am Bedienen, **kein Konfetti**.
+1. **Was wäre, wenn …?** Vier Regler (Anbau am Haus, Carport/Garage, Terrasse/Balkon, Gartenhaus/Nebenanlage) mit Zahlenfeld. Die Karten zeigen sofort "mit Änderung" (Ist, mit Änderung, zulässig, noch frei), im Balken und im Raster erscheint die Änderung als eigene Farbe. Je Baustein steht, was er in GRZ I und GRZ II zählt ("zählt nach BauNVO … nicht"), und **wie viel noch möglich ist** (Knopf "bis zur Grenze" stellt genau diese Fläche ein, 0,00 m² frei). Die Eingaben bleiben unverändert, "Zurücksetzen" setzt die Bausteine auf 0. Der Rechenkern kennt dafür `anbau`.
+2. **Ruhiges Einlaufen** beim ersten Zeigen nach dem Start: Zahlen zählen hoch, Balken wachsen, die Kästchen erscheinen nacheinander. Bei Änderungen danach nicht mehr. Aus bei "weniger Bewegung" im System.
+3. **Titelsatz** im Kopf, sachlich: zum Beispiel "Die GRZ ist eingehalten. In der GRZ I bleiben noch 29,48 m² (4,9 % des Grundstücks) frei, in der GRZ II noch 100,34 m²." Mit Baustein: "Mit der Änderung: …".
+4. **(i)-Erklärungen in einfacher Sprache** an GRZ I, GRZ II und an jedem Posten in "So wurde gerechnet" (je nach BauNVO-Fassung). Geöffnete Erklärungen bleiben beim Verschieben der Regler offen.
+- Getestet: Beispiele der Arbeitshilfe weiter richtig (1962 / 1968 / 1990), Anbau 40 m² erhöht GRZ I von 500 auf 540 m², "bis zur Grenze" bei GRZ I 29,48 m² (29,49 m² = überschritten), Reset, Erklärungen. Nicht getestet: Handy-Breite der Regler.
+### GRZ-Prüfer: Lageplan wird jetzt gelesen (19.11., nach dem Test mit `Testordner/Lageplan GRZ.pdf`)
+
+**Fehler beim Test des Teams:** Mit einem Lageplan wurde nur die Terrasse erkannt, nicht Wohnhaus, Garage und befestigte Fläche. **Ursache:** Der gemeinsame Flächenleser (`raumstempel.ps1`, auch für A3/A4) erkennt eine Fläche nur, wenn das "m²" höchstens 40 Punkt rechts neben der Zahl steht. Im Lageplan steht es weiter weg (Terrasse 35, Garage 47, befestigte Fläche 47, Wohnhaus 55 Punkt).
+
+**Behebung (nur im GRZ-Add-on, A3/A4 unverändert):** Neuer Leser `Get-GrzLageplanFlaechen` in `pruefung/grz.ps1`. Er nimmt Name (Zeile über der Zahl) und Fläche (bis 90 Punkt bis zum "m²") und akzeptiert nur Namen aus dem Lageplan-Wortschatz (Haus, Gebäude, Garage, Carport, Terrasse, Balkon, befestigt, Zufahrt, Weg, Pflaster, Schuppen, Pool …). Raumstempel eines Grundrisses werden dadurch nicht zu Lageplan-Flächen.
+- **Wohnhaus (Haus/Gebäude)** aus dem Lageplan wird direkt als **Gebäudegrundfläche** übernommen (genauer als die Schätzung). Die Geschosse aus den Grundrissen bleiben in der Liste, sind aber abgewählt (Spalte "zählt mit"), sonst würde das größere Gebäuderechteck die genaue Fläche überlagern.
+- **Garage/Carport, Terrasse/Balkon, Nebenanlagen** kommen in ihre Felder. Neu: **"Befestigte Fläche", Zufahrt, Weg, Pflaster** kommen ins Feld "Zufahrten, Zuwegungen".
+- Flächen, die schon als Lageplan-Fläche da sind, werden nicht doppelt aus den Grundrissen gezählt.
+- **Getestet** mit eurem Testordner (Lageplan, EG, OG, Grundstück 600 m², GRZ 0,4, BauNVO 1990): Wohnhaus 118,39 + Terrasse 19,70 = **GRZ I 138,09 m²**; dazu Garage 58,12 und befestigte Fläche 41,54 = **GRZ II 237,75 m²**. Auch `01_A_ok` (Carport, Gartenhaus) und das Museum (Außenterrasse) liefern keine falschen Flächen.
+- **Grenze:** Nur Beschriftungen mit Name oberhalb und Fläche darunter. Steht die Fläche neben dem Namen oder fehlt der Name im Wortschatz, wird sie nicht erkannt (Feld von Hand ausfüllen). Die Grundstücksgröße aus dem Lageplan wird nicht übernommen (sie wird vor dem Start eingegeben).
+### GRZ-Prüfer: Auswahl "Mit Plan" oder "Manuell" und eigene Ergebnisseite (19.11.)
+
+**Wunsch des Teams:** Zur Übersicht soll nach den Vorgaben gefragt werden, ob mit Plan oder von Hand geprüft wird. Der Rest bleibt wie er war.
+- **Seite 1 (Eingabe):** Zuerst "Welche Vorgaben gelten?" (Grundstücksgröße, GRZ, Baugebiet, BauNVO-Fassung). Erst wenn diese vier Angaben stehen, erscheint die Frage **"Wie möchtest du weitermachen?"** mit zwei Kacheln nebeneinander:
+  - **Mit Plan:** Es erscheint das Feld zum Hochladen (Grundrisse und/oder Lageplan). Die Lupe wird aktiv, sobald mindestens ein PDF da ist.
+  - **Manuell eingeben:** Es erscheinen Felder für Gebäudegrundfläche (Pflicht), Terrassen/Balkone, Garagen, Zufahrten, Nebenanlagen, Tiefgarage und (nur BauNVO 1990) Überlagerung. Leere Felder zählen als 0. Die Lupe wird aktiv, sobald die Gebäudegrundfläche eingetragen ist.
+  - Kommen die Pläne aus dem Raumprogramm oder dem Planprüfer, ist "Mit Plan" schon vorgewählt.
+- **Lupe:** Bei beiden Wegen springt die Seite auf die **Ergebnisseite** (die Eingabeseite wird ausgeblendet). Dort: Titelsatz, GRZ I und GRZ II, "Was wäre, wenn", die änderbaren Flächen (beim Planweg "Flächen aus dem Plan", beim manuellen Weg "Eure Eingaben"), "So wurde gerechnet". Die Was-wäre-wenn-Regler beginnen bei jeder neuen Prüfung wieder bei 0.
+- **Zurück:** Auf der Ergebnisseite führt der Knopf unten links ("Zurück zur Eingabe") zur Eingabe, die Angaben und der gewählte Weg bleiben erhalten.
+- **Getestet:** Beide Wege mit den Dateien aus `Testordner/` (Lageplan GRZ, 01 Grundriss EG). Manuell (118,39 / 19,70 / 58,12 / 41,54 m²) und mit Plan geben dasselbe: GRZ I 138,09 m², GRZ II 237,75 m². Nicht getestet: Handy-Breite, Weg über das Raumprogramm.
+- **Geändert:** `pruefung/web/grz.js` (Markup, `pruefeBereit`, Start-Handler, `baueEditor`, Ansichtswechsel), `pruefung/web/grz.css` (zwei Zeilen). Server unverändert.
+## Handyansicht für die ganze Web-App (Donnerstag 19.11.)
+
+Auf Wunsch des Teams: Die gesamte App läuft jetzt auch auf dem Handy (bis 640 px Breite, Test mit 375 px). Kein eigenes Handy-Programm, sondern dieselben Seiten mit Handy-Regeln. Sicherung der Dateien davor: `pruefung/web` wurde vor der Änderung in den Temp-Ordner der Sitzung kopiert (nicht im Projekt).
+- **Taskleiste (Hauptproblem):** Vorher war sie auf dem Handy 446 px breit und schob alle Seiten nach rechts. Jetzt eine Zeile: Nummer je Schritt, nur der aktive Schritt zusätzlich mit Namen (① Planprüfer, ② Raumprogramm, ③ GRZ; auf Seite 2 zusätzlich "Ergebnis"). Die Unterpunkte Werkplanung/Entwurfsplanung sind auf dem Handy ausgeblendet, die Phase wählt man auf der Startseite. Antippen hält ein Tooltip (title) mit dem Namen.
+- **Startseite und Prüf-Ergebnis:** schmalere Ränder, kompaktere Kacheln, Kopfleiste bricht um, größere Tippflächen (Datei entfernen), Knopf "Zurück" berücksichtigt den unteren Rand des Handys (`safe-area`), Farbe der Browserleiste (`theme-color`).
+- **Raumprogramm:** Der Ring mit "8/10 Zeilen belegt" lag auf dem Handy über der Soll-Anzeige; jetzt Ring oben in der Mitte, Summen darunter. Verschieben von Räumen per Ziehen geht auf dem Handy nicht (Browser-Technik), dort gilt "Raum antippen, dann die Karte antippen" (steht im Tipp).
+- **GRZ-Prüfer:** Regler ("Was wäre, wenn") kompakt (Zahlfeld und "bis zur Grenze" nebeneinander), Flächenliste mit beschriftetem Häkchen "zählt mit", kürzere Texte in der BauNVO-Auswahl ("Pläne bis 1967" statt "Bebauungspläne bis 1967").
+- **Geprüft** bei 375 px Breite: Startseite, Prüf-Ergebnis, Raumprogramm (Eingabe und Puzzle), GRZ (Eingabe, beide Wege, Ergebnis, Regler, Flächenliste): keine Seite ist mehr breiter als der Bildschirm. Die Desktop-Ansicht ist unverändert.
+- **Nicht geprüft:** Vollbild und Zoom des Plans auf einem echten Handy (Zwei-Finger-Zoom), Hochformat/Querformat-Wechsel, Tablet-Breite (641 bis 980 px) und ein echtes Handy.
+- **Zugriff vom Handy:** Der Server hört nur auf `localhost`, ein Handy im WLAN kommt deshalb **nicht** direkt ran. Dafür müsste der Server auf die Netzwerkadresse umgestellt werden (Sicherheit beachten: dann erreicht jeder im selben Netz die App und die Pläne). Das ist bewusst nicht eingebaut.
+- **Geändert:** `pruefung/web/index.html` (Handy-Block, Meta-Tags), `raumprogramm.css`, `raumprogramm.js` (Tooltip), `grz.css`, `grz.js`.

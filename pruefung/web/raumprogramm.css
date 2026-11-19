@@ -126,6 +126,13 @@ body.rp-waehlt .rp-karte, body.rp-waehlt .rp-pool { cursor: copy; border-color: 
 @media (max-width: 640px) {
   .rp-karten { grid-template-columns: 1fr; }
   .rp-los { padding-right: 100px; }
+  /* Handy: Ring oben in der Mitte, die Zahl liegt im Ring, Summen darunter */
+  .rp-kopf { flex-direction: column; align-items: center; text-align: center; }
+  .rp-ring-zahl { left: 50%; top: 78px; margin-left: -60px; transform: translateY(-50%); }
+  .rp-kopf-text { flex: 1 1 auto; width: 100%; }
+  .rp-summen, .rp-geschosse { justify-content: center; }
+  .rp-summe { flex: 1 1 130px; text-align: left; }
+  .rp-weiter { padding: 18px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .rp-puzzle .teil, .rp-karte, .rp-weiter.rein { animation: none !important; }
