@@ -111,6 +111,7 @@
   let gewaehlterRaum = null;
   let konfettiSchonGezeigt = false;
   let laeuft = false;
+  pp.rpPlaene = () => planDateien;   // für das Add-on GRZ/GFZ: dieselben Grundrisse mitnehmen
 
   function oeffne() {
     // Pläne aus der Prüfung übernehmen, wenn noch keine gewählt sind
