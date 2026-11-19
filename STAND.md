@@ -336,3 +336,7 @@ Auf Wunsch des Teams: Die gesamte App läuft jetzt auch auf dem Handy (bis 640 p
 - **Lokal getestet** wie auf GitHub (nur feste Dateien, Unterpfad `/plan-pruefer/`): Werkplan mit Fehler zeigt "BRH am Fenster (rechts)", Raumprogramm 9/12 Zeilen, GRZ mit Lageplan (GRZ I noch 101,91 m² frei), GRZ manuell, eigener Plan wird abgewiesen. Das lokale Programm mit Server läuft unverändert, ohne Demo-Teile.
 - **Ergebnisse neu aufzeichnen**, wenn sich eine Prüfung ändert: Server starten, die fünf Beispielpläne unter ihren Demo-Namen (`werkplan-mit-fehler.pdf`, `grundriss-eg.pdf`, `grundriss-og.pdf`, `lageplan.pdf`) mit Kopf `X-Dateiname` (und bei `/pruefen` `X-Phase: werk`, `X-Ki: nein`) schicken. Schlüssel in `antworten.json`: `pfad|dateiname|phase`.
 - **Achtung:** Die Demo zeigt die PDFs aus dem `Testordner` öffentlich, mit Name und Adresse im Plankopf. Verschwindet der `Testordner`, bricht der Ablauf ab.
+## Release 1.0.0 (Donnerstag 19.11.)
+
+- Der von Hand angelegte Tag wurde von GitHub Desktop nicht mitgeschickt. Darum legt jetzt der Ablauf .github/workflows/release.yml Tag und Release selbst an: Er läuft, wenn die Datei VERSION auf main gepusht wird, und erzeugt Tag <VERSION> und die Release "Planprüfer <VERSION>" mit dem Text aus docs/release-notes.md. Gibt es die Release schon, passiert nichts.
+- **Neue Version später:** Zahl in VERSION erhöhen (zum Beispiel 1.1.0), docs/release-notes.md anpassen, committen und pushen.

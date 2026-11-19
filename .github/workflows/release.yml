@@ -1,0 +1,45 @@
+# Release automatisch anlegen
+#
+# Steht in der Datei VERSION eine neue Versionsnummer (zum Beispiel 1.0.0) und wird sie auf main gepusht,
+# legt dieser Ablauf auf GitHub den Tag "v1.0.0" und die Release "Planprüfer 1.0.0" an.
+# Der Text der Release kommt aus docs/release-notes.md.
+# Gibt es die Release schon, passiert nichts. Für eine neue Version: VERSION ändern, Text anpassen, pushen.
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Projekt holen
+        uses: actions/checkout@v4
+
+      - name: Release anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "VERSION enthält keine gültige Versionsnummer: '$VERSION'"; exit 1
+          fi
+          TAG="v$VERSION"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Die Release $TAG gibt es schon, nichts zu tun."
+            exit 0
+          fi
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "Planprüfer $VERSION" \
+            --notes-file docs/release-notes.md \
+            --latest
+          echo "Release $TAG angelegt."
